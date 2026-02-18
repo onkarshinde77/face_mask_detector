@@ -8,4 +8,6 @@ DATA_CLASSES_FILE_PATH:str = "_classes.csv"
 # process data
 ARTIFACT_DIR:str = "artifact"
 
+# other
+img_extention = (".jpg",".jpeg",".png")
 
