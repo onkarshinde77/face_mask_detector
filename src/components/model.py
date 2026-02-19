@@ -42,32 +42,32 @@ class Model:
             logging.info(f"model compile done")
             print(model.summary())
             logging.info("Model Initialization done")
+            return model
         except Exception as e:
             raise CustomException(e, sys)
     
 
-
     def create_data_generator(image_dir_path: str,label_csv_path: str,img_size: int = 224,
                               batch_size: int = 32,shuffle: bool = True):
-        
-        df = pd.read_csv(label_csv_path)
-        # Create ImageDataGenerator
-        datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
-        generator = datagen.flow_from_dataframe(
-            dataframe=df,
-            directory=image_dir_path,
-            x_col="filename",
-            y_col="label",
-            target_size=(img_size, img_size),
-            batch_size=batch_size,
-            class_mode="binary",   # since you have 0 & 1
-            shuffle=shuffle
-        )
+        try:
+            df = pd.read_csv(label_csv_path)
+            if not os.path.exists(image_dir_path) or not os.path.exists(label_csv_path):
+                raise FileNotFoundError(f"File Path Node found in create_data_generator")
+            # Create ImageDataGenerator
+            datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
+            generator = datagen.flow_from_dataframe(
+                dataframe=df,
+                directory=image_dir_path,
+                x_col="filename",
+                y_col="label",
+                target_size=(img_size, img_size),
+                batch_size=batch_size,
+                class_mode="binary",   
+                shuffle=shuffle
+            )
 
-        return generator
-
-    
-    def initialize_model(self):
-        self.model()
+            return generator
+        except Exception as e:
+            raise CustomException(e,sys)
     
 
