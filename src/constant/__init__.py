@@ -17,4 +17,4 @@ IMG_SIZE = 224
 NUM_CLASSES = 1
 EPOCHS=10
 MODEL_DIR:str = "models"
-
+MODEL_NAME:str = "face_mask_model2.h5"

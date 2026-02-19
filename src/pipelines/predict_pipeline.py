@@ -7,14 +7,14 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.vgg16 import preprocess_input
-from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE
+from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE , MODEL_NAME
 from src.exception.exception import CustomException
 from src.logger.logger import logging
 
 class PredictPipeline:
     def __init__(self):
         try:
-            self.model_path = os.path.join(ARTIFACT_DIR, MODEL_DIR, "face_mask_model.h5")
+            self.model_path = os.path.join(ARTIFACT_DIR, MODEL_DIR, MODEL_NAME)
             if not os.path.exists(self.model_path):
                  raise FileNotFoundError(f"Model not found at {self.model_path}")
             
@@ -31,8 +31,7 @@ class PredictPipeline:
             logging.info(f"Model loaded from {self.model_path}")
         except Exception as e:
             logging.error(f"Error initializing PredictPipeline: {str(e)}")
-            # We might want to raise here, but for now log it.
-            # raise CustomException(e, sys)
+            raise CustomException(e, sys)
 
     def predict(self, frame):
         try:
