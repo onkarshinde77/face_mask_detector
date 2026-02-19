@@ -29,4 +29,6 @@ class TrainPipeline:
 
 if __name__ == "__main__":
     obj = TrainPipeline()
-    obj.run_pipeline()
+    history = obj.run_pipeline()
+    logging.info(f"history : {history}")
+    print(history)

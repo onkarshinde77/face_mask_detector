@@ -54,7 +54,7 @@ class ModelTrainer:
             test_loss, test_accuracy = model.evaluate(test_data_generation)
             logging.info(f"Test Accuracy: {test_accuracy}")
             # Save Model
-            model_path:str = os.path.join(self.model_save_path,"face_mask_model.h5")
+            model_path:str = os.path.join(self.model_save_path,"face_mask_model2.h5")
             model.save(model_path)
             logging.info(f"Model Saved Successfully in {model_path}")
             return history
@@ -64,6 +64,4 @@ class ModelTrainer:
     
     def initialize_training(self):
         return self.model_training()
-    
-    
 

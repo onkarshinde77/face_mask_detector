@@ -28,7 +28,7 @@ class DataIngestion:
         self.corrupted_list: List[str] = []
 
         self.image_size: Tuple[int, int] = (224, 224)
-
+    
         self.artifact_dir = constant.ARTIFACT_DIR
         self.artifact_data_dir = os.path.join(constant.ARTIFACT_DIR, constant.DATA_DIR)
         self.artifact_train_dir = os.path.join(self.artifact_data_dir, constant.TRAIN_DATA_DIR)
@@ -151,6 +151,24 @@ class DataIngestion:
 
     def init_data_ingestion(self) -> DataIngestionArtifact:
         try:
+            train_img_dir = os.path.join(self.artifact_train_dir, self.img_dir)
+            test_img_dir = os.path.join(self.artifact_test_dir, self.img_dir)
+            valid_img_dir = os.path.join(self.artifact_valid_dir, self.img_dir)
+            
+            if (os.path.exists(train_img_dir) and 
+                os.path.exists(test_img_dir) and 
+                os.path.exists(valid_img_dir)):
+                
+                logging.info("Data already ingested. Skipping ingestion step.")
+                return DataIngestionArtifact(
+                    train_dir_path=train_img_dir,
+                    test_dir_path=test_img_dir,
+                    valid_dir_path=valid_img_dir,
+                    train_lable_path=os.path.join(self.artifact_train_dir, self.label_dir, self.train_lable_file),
+                    test_lable_path=os.path.join(self.artifact_test_dir, self.label_dir, self.test_lable_file),
+                    valid_lable_path=os.path.join(self.artifact_valid_dir, self.label_dir, self.valid_lable_file),
+                )
+
             logging.info("Started Data Ingestion")
 
             self._process_split(
@@ -178,9 +196,9 @@ class DataIngestion:
             
             logging.info("Data Ingestion Completed")
             return DataIngestionArtifact(
-                train_dir_path=os.path.join(self.artifact_train_dir, self.img_dir),
-                test_dir_path=os.path.join(self.artifact_test_dir, self.img_dir),
-                valid_dir_path=os.path.join(self.artifact_valid_dir, self.img_dir),
+                train_dir_path=train_img_dir,
+                test_dir_path=test_img_dir,
+                valid_dir_path=valid_img_dir,
                 train_lable_path=os.path.join(self.artifact_train_dir, self.label_dir, self.train_lable_file),
                 test_lable_path=os.path.join(self.artifact_test_dir, self.label_dir, self.test_lable_file),
                 valid_lable_path=os.path.join(self.artifact_valid_dir, self.label_dir, self.valid_lable_file),
@@ -190,6 +208,7 @@ class DataIngestion:
             raise CustomException(e, sys)
 
 
-config = DataIngestionConfig()
-obj = DataIngestion(config=config)
-obj.init_data_ingestion()
+# if __name__ == "__main__":
+#     config = DataIngestionConfig()
+#     obj = DataIngestion(config=config)
+#     obj.init_data_ingestion()
