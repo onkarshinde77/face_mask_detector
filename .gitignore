@@ -1,6 +1,7 @@
 # me written
 data/
 logs/
+artifact/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
