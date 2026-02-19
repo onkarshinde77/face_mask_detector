@@ -6,13 +6,16 @@ from flask import Flask, render_template, Response, request, redirect, url_for
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from src.exception.exception import CustomException
+from src.pipelines.predict_pipeline import PredictPipeline
+
+prediction = PredictPipeline()
 
 # Load Model ONCE
-try:
-    MODEL_PATH = "artifact/models/face_mask_model2.h5"
-    model = load_model(MODEL_PATH)
-except Exception as e:
-    raise CustomException(e,sys)
+# try:
+#     MODEL_PATH = "artifact/models/face_mask_model.h5"
+#     model = load_model(MODEL_PATH)
+# except Exception as e:
+#     raise CustomException(e,sys)
 
 # Load Face Detector (Haarcascade)
 face_detector = cv2.CascadeClassifier(
@@ -35,33 +38,37 @@ camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 # Prediction Function
 def predict_mask(frame):
+    return prediction.predict(frame=frame),0
+    
+    
+# def predict_mask(frame):
 
-    gray = cv2.cvtColor(frame)
-    faces = face_detector.detectMultiScale(gray, 1.3, 5)
+#     # gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+#     faces = face_detector.detectMultiScale(frame, 1.3, 5)
 
-    for (x, y, w, h) in faces:
+#     for (x, y, w, h) in faces:
 
-        face = frame[y:y+h, x:x+w]
-        face_resized = cv2.resize(face, (224, 224))
+#         face = frame[y:y+h, x:x+w]
+#         face_resized = cv2.resize(face, (224, 224))
 
-        img = preprocess_input(face_resized)
-        img = np.expand_dims(img, axis=0)
+#         img = preprocess_input(face_resized)
+#         img = np.expand_dims(img, axis=0)
 
-        prediction = model.predict(img, verbose=0)[0][0]
+#         prediction = model.predict(img, verbose=0)[0][0]
 
-        if prediction == 0 :
-            label = "Mask"
-            color = (0, 255, 0)
-        else:
-            label = "No Mask"
-            color = (0, 0, 255)
+#         if prediction == 0 :
+#             label = "Mask"
+#             color = (0, 255, 0)
+#         else:
+#             label = "No Mask"
+#             color = (0, 0, 255)
 
-        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-        cv2.putText(frame, label, (x, y-10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.9, color, 2)
+#         cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+#         cv2.putText(frame, label, (x, y-10),
+#                     cv2.FONT_HERSHEY_SIMPLEX,
+#                     0.9, color, 2)
 
-    return frame
+#     return frame , prediction
 
 
 def generate_frames():
@@ -79,7 +86,7 @@ def generate_frames():
         if not success:
             break
 
-        frame = predict_mask(frame)
+        frame,_ = predict_mask(frame)
 
         ret, buffer = cv2.imencode(
             '.jpg',
@@ -102,7 +109,7 @@ def generate_video(path):
         success, frame = cap.read()
         if not success:
             break
-        frame = predict_mask(frame)
+        frame,prediction = predict_mask(frame)
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
         yield (b'--frame\r\n'
@@ -138,14 +145,16 @@ def upload_photo():
 
         img = cv2.imread(filepath)
         if img is not None:
-            img = predict_mask(img)
-
+            img,prediction = predict_mask(img)
+            
             processed_filename = "processed_" + file.filename
             processed_path = os.path.join(app.config['UPLOAD_FOLDER'], processed_filename)
             cv2.imwrite(processed_path, img)
 
             relative_path = url_for('static', filename=f'uploads/{processed_filename}')
-            return render_template('upload_photo.html', image_path=relative_path)
+            if prediction==0: flag = "Mask"
+            else: flag = "No Mask"
+            return render_template('upload_photo.html', image_path=relative_path,detection=flag)
 
     return render_template('upload_photo.html')
 

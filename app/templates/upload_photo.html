@@ -1,24 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Upload Photo</title>
-    <style>body { text-align: center; font-family: Arial; }</style>
-</head>
-<body>
+    <style>
+      body {
+        text-align: center;
+        font-family: Arial;
+      }
+    </style>
+  </head>
+  <body>
     <h1>Upload Photo for Detection</h1>
     <form method="post" enctype="multipart/form-data" style="margin-bottom: 20px;">
-        <input type="file" name="file" accept="image/*" required>
-        <button type="submit" style="padding: 5px 15px;">Detect</button>
+      <input type="file" name="file" accept="image/*" required />
+      <button type="submit" style="padding: 5px 15px;">Detect</button>
     </form>
-    
+
     {% if image_path %}
-    <div style="margin: 20px;">
-        <h2>Result:</h2>
-        <img src="{{ image_path }}" style="max-width: 800px; border: 2px solid #333;">
-    </div>
+      <div style="margin: 20px;">
+        <h2>Result:{{ detection }}</h2>
+        <img src="{{ image_path }}" style="max-width: 800px; border: 2px solid #333;" />
+      </div>
     {% endif %}
-    
-    <br>
+
+    <br />
     <a href="/" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px;">Back to Home</a>
-</body>
+  </body>
 </html>
