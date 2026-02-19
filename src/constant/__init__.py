@@ -11,3 +11,7 @@ ARTIFACT_DIR:str = "artifact"
 # other
 img_extention = (".jpg",".jpeg",".png")
 
+# model 
+IMG_SIZE = 224
+NUM_CLASSES = 1
+
