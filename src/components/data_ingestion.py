@@ -31,10 +31,16 @@ class DataIngestion:
 
         self.artifact_dir = constant.ARTIFACT_DIR
         self.artifact_data_dir = os.path.join(constant.ARTIFACT_DIR, constant.DATA_DIR)
-        self.lable_file: str = "lable.csv"
         self.artifact_train_dir = os.path.join(self.artifact_data_dir, constant.TRAIN_DATA_DIR)
         self.artifact_test_dir = os.path.join(self.artifact_data_dir, constant.TEST_DATA_DIR)
         self.artifact_valid_dir = os.path.join(self.artifact_data_dir, constant.VALID_DATA_DIR)
+        
+        self.train_lable_file: str = "train.csv"
+        self.test_lable_file: str = "test.csv"
+        self.valid_lable_file: str = "valid.csv"
+        
+        self.img_dir: str = constant.IMG_DIR
+        self.label_dir: str = constant.LABLE_DIR
 
         os.makedirs(self.artifact_dir, exist_ok=True)
         os.makedirs(self.artifact_train_dir, exist_ok=True)
@@ -99,7 +105,7 @@ class DataIngestion:
         except Exception as e:
             raise CustomException(e, sys)
 
-    def _process_split(self, dir_path: str, label_path: str, artifact_dir: str):
+    def _process_split(self, dir_path: str, label_path: str, artifact_dir: str, lable_file: str):
         try:
             logging.info(f"Processing split: {dir_path}")
 
@@ -110,16 +116,22 @@ class DataIngestion:
                 logging.warning("No valid data found.")
                 return
 
+            label_save_dir = os.path.join(artifact_dir, self.label_dir)
+            os.makedirs(label_save_dir, exist_ok=True)
+            
             df = pd.DataFrame(self.lable_list)
-            label_save_path = os.path.join(artifact_dir, self.lable_file)
+            label_save_path = os.path.join(label_save_dir, lable_file)
             df.to_csv(label_save_path, index=False)
             logging.info(f"Label file saved at {label_save_path}")
+
+            img_save_dir = os.path.join(artifact_dir, self.img_dir)
+            os.makedirs(img_save_dir, exist_ok=True)
 
             for item in self.lable_list:
                 img_name = item.get("filename")
                 src_img_path = os.path.join(dir_path, img_name)
-                temp_img_path = os.path.join(artifact_dir, f"temp_{img_name}")
-                final_img_path = os.path.join(artifact_dir, img_name)
+                temp_img_path = os.path.join(img_save_dir, f"temp_{img_name}")
+                final_img_path = os.path.join(img_save_dir, img_name)
 
                 if os.path.exists(src_img_path):
                     img = cv2.imread(src_img_path)
@@ -145,30 +157,33 @@ class DataIngestion:
                 self.train_dir_path,
                 self.train_lable_file_path,
                 self.artifact_train_dir,
+                self.train_lable_file
             )
 
             self._process_split(
                 self.test_dir_path,
                 self.test_lable_file_path,
                 self.artifact_test_dir,
+                self.test_lable_file
             )
 
             self._process_split(
                 self.valid_dir_path,
                 self.valid_lable_file_path,
                 self.artifact_valid_dir,
+                self.valid_lable_file
             )
             logging.info(f"Valid Image count : {self.img_list}")
             logging.info(f"lable count : {self.lable_list}")
             
             logging.info("Data Ingestion Completed")
             return DataIngestionArtifact(
-                train_dir_path=self.artifact_train_dir,
-                test_dir_path=self.artifact_test_dir,
-                valid_dir_path=self.artifact_valid_dir,
-                train_lable_path=os.path.join(self.artifact_train_dir, self.lable_file),
-                test_lable_path=os.path.join(self.artifact_test_dir, self.lable_file),
-                valid_lable_path=os.path.join(self.artifact_valid_dir, self.lable_file),
+                train_dir_path=os.path.join(self.artifact_train_dir, self.img_dir),
+                test_dir_path=os.path.join(self.artifact_test_dir, self.img_dir),
+                valid_dir_path=os.path.join(self.artifact_valid_dir, self.img_dir),
+                train_lable_path=os.path.join(self.artifact_train_dir, self.label_dir, self.train_lable_file),
+                test_lable_path=os.path.join(self.artifact_test_dir, self.label_dir, self.test_lable_file),
+                valid_lable_path=os.path.join(self.artifact_valid_dir, self.label_dir, self.valid_lable_file),
             )
 
         except Exception as e:
