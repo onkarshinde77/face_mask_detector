@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Feed</title>
+    <style>body { text-align: center; font-family: Arial; }</style>
+</head>
+<body>
+    <h1>Live Camera Detection</h1>
+    <div style="margin: 20px;">
+        <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border: 2px solid #333;">
+    </div>
+    <a href="/" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px;">Back to Home</a>
+</body>
+</html>

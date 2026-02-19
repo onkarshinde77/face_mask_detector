@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Mask Detector</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }
+        h1 { color: #333; }
+        .container { display: flex; justify-content: center; gap: 20px; margin-top: 50px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 200px; }
+        .btn { display: block; width: 100%; padding: 10px; margin-top: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+        .btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Face Mask Detection</h1>
+    <div class="container">
+        <div class="card">
+            <h3>Live Camera</h3>
+            <p>Detect masks in real-time using your webcam.</p>
+            <a href="/live" class="btn">Start Live Cam</a>
+        </div>
+        <div class="card">
+            <h3>Upload Photo</h3>
+            <p>Upload an image to detect masks.</p>
+            <a href="/upload_photo" class="btn">Upload Photo</a>
+        </div>
+        <div class="card">
+            <h3>Upload Video</h3>
+            <p>Upload a video to detect masks.</p>
+            <a href="/upload_video" class="btn">Upload Video</a>
+        </div>
+    </div>
+</body>
+</html>
