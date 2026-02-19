@@ -64,7 +64,6 @@ class PredictPipeline:
                 
                 # Logic for class determination
                 # Assuming 0: "Mask" (with_mask), 1: "No Mask" (without_mask)
-                # If output is 1 node (sigmoid/softmax-1):
                 if pred.shape[0] == 1 or (len(pred.shape) == 0):
                      # Binary case
                      score = pred[0] if len(pred) > 0 else pred
