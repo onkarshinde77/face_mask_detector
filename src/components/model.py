@@ -47,6 +47,7 @@ class Model:
             raise CustomException(e, sys)
     
 
+    @staticmethod
     def create_data_generator(image_dir_path: str,label_csv_path: str,img_size: int = 224,
                               batch_size: int = 32,shuffle: bool = True):
         try:

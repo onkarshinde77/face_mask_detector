@@ -21,6 +21,7 @@ class ModelTrainer:
             self.model_save_path:str = os.path.join(
                 constant.ARTIFACT_DIR,constant.MODEL_DIR
             )
+            os.makedirs(self.model_save_path,exist_ok=True)
             self.model_obj = Model()
             
         except Exception as e:
@@ -28,7 +29,7 @@ class ModelTrainer:
 
     def model_training(self):
         try:
-            model:tensorflow.keras.models = self.model_obj.model
+            model:tensorflow.keras.models = self.model_obj.model()
             train_data_generation = self.model_obj.create_data_generator(
                 image_dir_path=self.train_data_artifact,
                 label_csv_path=self.train_lable_artifact
