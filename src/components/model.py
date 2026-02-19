@@ -29,10 +29,8 @@ class Model:
             model.add(base_model)
             model.add(layers.Flatten())
             model.add(layers.Dense(4096, activation="relu"))
-            model.add(layers.Dropout(0.5))
             model.add(layers.Dense(4096, activation="relu"))
-            model.add(layers.Dropout(0.5))
-            model.add(layers.Dense(constant.NUM_CLASSES, activation="softmax"))
+            model.add(layers.Dense(constant.NUM_CLASSES, activation="sigmoid"))
 
             model.compile(
                 optimizer="adam",
@@ -60,7 +58,7 @@ class Model:
                 dataframe=df,
                 directory=image_dir_path,
                 x_col="filename",
-                y_col="label",
+                y_col="lable",
                 target_size=(img_size, img_size),
                 batch_size=batch_size,
                 class_mode="binary",   

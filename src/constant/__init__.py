@@ -10,13 +10,11 @@ ARTIFACT_DIR:str = "artifact"
 IMG_DIR:str = "images"
 LABLE_DIR:str = "labels"
 LABLE_FILE_NAME:str = "label.csv"
-
 # other
 img_extention = (".jpg",".jpeg",".png")
-
 # model 
 IMG_SIZE = 224
 NUM_CLASSES = 1
-EPOCHS=1
+EPOCHS=10
 MODEL_DIR:str = "models"
 
