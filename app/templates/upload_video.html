@@ -1,26 +1,52 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Upload Video</title>
-    <style>body { text-align: center; font-family: Arial; }</style>
-</head>
-<body>
-    <h1>Upload Video for Detection</h1>
-    <form method="post" enctype="multipart/form-data" style="margin-bottom: 20px;">
-        <input type="file" name="file" accept="video/*" required>
-        <button type="submit" style="padding: 5px 15px;">Detect</button>
-    </form>
-    
-    {% if video_path %}
-    <div style="margin: 20px;">
-        <h2>Processing Video...</h2>
-        <!-- Video playback not easily supported for streaming processed output directly in this simple setup without more complex backend logic. 
-             We will stream the response. -->
-        <p>Video is being processed. If you see this, check the stream URL.</p>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Video - Face Mask Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navbar-brand">🎭 Face Mask Detector</a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/upload_photo">Upload Photo</a>
+        <a href="/live">Live Camera</a>
+      </div>
     </div>
-    {% endif %}
-    
-    <br>
-    <a href="/" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px;">Back to Home</a>
-</body>
+
+    <div class="container">
+      <div class="upload-section">
+        <h1>🎬 Upload Video</h1>
+        <p style="color: #666; margin-bottom: 30px;">Upload a video file to detect face masks in every frame</p>
+
+        <form method="post" enctype="multipart/form-data">
+          <label for="file-input" class="file-input-label">
+            <div>📁 Click to choose a video or drag and drop</div>
+            <div class="file-name" id="file-name">No file chosen</div>
+            <input type="file" id="file-input" name="file" accept="video/*" required />
+          </label>
+          <button type="submit" class="btn">🔍 Detect Masks</button>
+        </form>
+
+        {% if video_path %}
+          <div class="result-section">
+            <h2>✅ Video Processing Complete</h2>
+            <p class="processing">Your video has been processed and analyzed.</p>
+            <div style="color: #666; margin: 20px 0;">The detected video is ready. You can view the results in the processed output.</div>
+          </div>
+        {% endif %}
+
+        <a href="/" class="back-link">← Back to Home</a>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('file-input').addEventListener('change', function (e) {
+        const fileName = e.target.files[0]?.name || 'No file chosen'
+        document.getElementById('file-name').textContent = fileName
+      })
+    </script>
+  </body>
 </html>

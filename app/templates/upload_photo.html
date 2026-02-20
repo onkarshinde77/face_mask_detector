@@ -1,29 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Upload Photo</title>
-    <style>
-      body {
-        text-align: center;
-        font-family: Arial;
-      }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Photo - Face Mask Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   </head>
   <body>
-    <h1>Upload Photo for Detection</h1>
-    <form method="post" enctype="multipart/form-data" style="margin-bottom: 20px;">
-      <input type="file" name="file" accept="image/*" required />
-      <button type="submit" style="padding: 5px 15px;">Detect</button>
-    </form>
-
-    {% if image_path %}
-      <div style="margin: 20px;">
-        <h2>Result:{{ detection }}</h2>
-        <img src="{{ image_path }}" style="max-width: 800px; border: 2px solid #333;" />
+    <div class="navbar">
+      <a href="/" class="navbar-brand">🎭 Face Mask Detector</a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/upload_video">Upload Video</a>
+        <a href="/live">Live Camera</a>
       </div>
-    {% endif %}
+    </div>
 
-    <br />
-    <a href="/" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px;">Back to Home</a>
+    <div class="container">
+      <div class="upload-section">
+        <h1>📷 Upload Photo</h1>
+        <p style="color: #666; margin-bottom: 30px;">Select an image to detect face masks</p>
+
+        <form method="post" enctype="multipart/form-data">
+          <label for="file-input" class="file-input-label">
+            <div>📁 Click to choose a photo or drag and drop</div>
+            <div class="file-name" id="file-name">No file chosen</div>
+            <input type="file" id="file-input" name="file" accept="image/*" required />
+          </label>
+          <button type="submit" class="btn">🔍 Detect Masks</button>
+        </form>
+
+        {% if image_path %}
+          <div class="result-section">
+            <h2>✅ Detection Results</h2>
+            <div style="color: #555; margin-bottom: 20px; font-size: 16px;">
+              <strong>Status: {{ detection }}</strong>
+            </div>
+            <img src="{{ image_path }}" alt="Detection result" class="result-image" />
+          </div>
+        {% endif %}
+
+        <a href="/" class="back-link">← Back to Home</a>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('file-input').addEventListener('change', function (e) {
+        const fileName = e.target.files[0]?.name || 'No file chosen'
+        document.getElementById('file-name').textContent = fileName
+      })
+    </script>
   </body>
 </html>

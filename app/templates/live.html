@@ -1,14 +1,31 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Live Feed</title>
-    <style>body { text-align: center; font-family: Arial; }</style>
-</head>
-<body>
-    <h1>Live Camera Detection</h1>
-    <div style="margin: 20px;">
-        <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border: 2px solid #333;">
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Camera - Face Mask Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="/" class="navbar-brand">🎭 Face Mask Detector</a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/upload_photo">Upload Photo</a>
+        <a href="/upload_video">Upload Video</a>
+      </div>
     </div>
-    <a href="/" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px;">Back to Home</a>
-</body>
+
+    <div class="container">
+      <div class="live-camera">
+        <h1>📹 Live Camera Detection</h1>
+        <p style="color: #666; margin-bottom: 30px;">Real-time face mask detection from your webcam</p>
+        <div style="position: relative; display: inline-block; width: 100%; max-width: 800px;">
+          <img src="{{ url_for('video_feed') }}" alt="Live camera feed" style="width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);" />
+          <div style="position: absolute; top: 20px; right: 20px; background: rgba(102, 126, 234, 0.9); color: white; padding: 10px 15px; border-radius: 20px; font-size: 12px; font-weight: 600;">🟢 LIVE</div>
+        </div>
+        <a href="/" class="back-link">← Back to Home</a>
+      </div>
+    </div>
+  </body>
 </html>
