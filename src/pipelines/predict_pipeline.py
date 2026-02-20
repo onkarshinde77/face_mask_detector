@@ -1,3 +1,4 @@
+
 import os
 import sys
 import cv2
@@ -47,97 +48,8 @@ class PredictPipeline:
         except Exception as e:
             logging.error(f"Error initializing PredictPipeline: {str(e)}")
             raise CustomException(e, sys)
-        
+
     def predict(self, frame):
-        try:
-            # Aggressive resizing for CPU (even smaller = faster)
-            small_frame = cv2.resize(frame, (400, 300))
-            gray = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY)
-            
-            # Apply histogram equalization for faster face detection
-            gray = cv2.equalizeHist(gray)
-
-            # Optimize cascade detection for CPU: higher scaleFactor = much faster
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.4,  # More aggressive for CPU speed
-                minNeighbors=3,   # Minimal checks for speed
-                minSize=(40, 40), # Smaller min face size
-                maxSize=(180, 180),
-                flags=cv2.CASCADE_SCALE_IMAGE  # Explicit flag for optimization
-            )
-
-            if len(faces) == 0:
-                return small_frame
-
-            faces_list = []
-            faces_rects = []
-
-            # Limit to 3 faces max to reduce inference time on CPU
-            max_faces = min(3, len(faces))
-            
-            for i in range(max_faces):
-                x, y, w, h = faces[i]
-                face = small_frame[y:y+h, x:x+w]
-
-                # Convert BGR → RGB
-                face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-
-                # Resize once
-                face = cv2.resize(face, (IMG_SIZE, IMG_SIZE))
-
-                # Convert to array and preprocess
-                face = np.asarray(face, dtype="float32")
-                face = preprocess_input(face)
-
-                faces_list.append(face)
-                faces_rects.append((x, y, w, h))
-
-            if not faces_list:
-                return small_frame
-
-            faces_array = np.array(faces_list, dtype="float32")
-
-            # Smaller batch size for CPU (prevents memory overload)
-            batch_size = max(1, min(2, len(faces_array)))
-            preds = self.model.predict(faces_array, batch_size=batch_size, verbose=0)
-
-            for i, (x, y, w, h) in enumerate(faces_rects):
-
-                pred = preds[i]
-
-                # Binary Classification
-                if len(pred) == 1:
-                    score = float(pred[0])
-                    label = "No Mask" if score > 0.5 else "Mask"
-                    confidence = score if score > 0.5 else 1 - score
-                else:
-
-                    label_idx = np.argmax(pred)
-                    confidence = float(pred[label_idx])
-                    label = "No Mask" if label_idx == 1 else "Mask"
-
-                # Color: Green for Mask, Red for No Mask
-                if label == "Mask":
-                    color = (0, 255, 0)
-                elif label == 'No Mask':
-                    color = (0, 0, 255)
-                text = f"{label}: {confidence*100:.1f}%"
-                
-                # Draw rectangle
-                cv2.rectangle(small_frame, (x, y), (x+w, y+h), color, 2)
-                
-                # Draw filled label background
-                (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                cv2.rectangle(small_frame, (x, y - th - 8), (x + tw, y), color, -1)
-                cv2.putText(small_frame, text, (x, y - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-            
-            return small_frame
-
-        except Exception as e:
-            logging.error(f"Prediction Error: {str(e)}")
-            return frame
-    def predict_main(self, frame):
         try:
             # Detect faces in grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -165,6 +77,7 @@ class PredictPipeline:
 
             for (i, (x, y, w, h)) in enumerate(faces_rects):
                 pred = preds[i]
+                
                 # Logic for class determination
                 # Assuming 0: "Mask" (with_mask), 1: "No Mask" (without_mask)
                 if pred.shape[0] == 1 or (len(pred.shape) == 0):
@@ -173,6 +86,9 @@ class PredictPipeline:
                      label = "No Mask" if score > 0.5 else "Mask"
                      confidence = score if score > 0.5 else 1 - score
                 else:
+                    # Multi-class or 2-node softmax
+                    # Index 0: Mask, Index 1: No Mask (alphabetical)
+                    # wait, 'with_mask' < 'without_mask'
                     label_idx = np.argmax(pred)
                     label = "No Mask" if label_idx == 1 else "Mask"
                     confidence = pred[label_idx]
@@ -189,26 +105,3 @@ class PredictPipeline:
         except Exception as e:
             logging.error(f"Error in prediction: {str(e)}")
             return frame
-        
-    def detect_mask(self,img):
-        sample = cv2.resize(img,(224,224))
-        y_pred = self.model.predict_classes(img.reshape(1,224,224,3))
-        return y_pred
-    
-    def predict2(self):
-        cap = cv2.VideoCapture(0)
-        
-        while True:
-            ret,frame = cap.read()
-            # prediction function fo frame
-            
-            cv2.imshow("window",frame)
-            if cv2.waitKey(1) & 0xFF==ord('x'):
-                break
-        cv2.destroyAllWindows()
-            
-
-# path = '../artifact/data/test/images/19-with-mask_jpg.rf.c15f92c5014adda1b32d128e903bd3ce.jpg'
-# obj = PredictPipeline()     
-# # obj.predict2()
-# y_pred = obj.detect_mask(path)
