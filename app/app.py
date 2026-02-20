@@ -23,8 +23,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 camera = cv2.VideoCapture(0)
-camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, 400)
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 300)
+camera.set(cv2.CAP_PROP_FPS, 20)
+camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 # Prediction Function
 def predict_mask(frame):
@@ -39,17 +41,35 @@ def generate_frames():
         print("Error: Could not open camera.")
         return
 
+    # Optimize camera settings for lower CPU consumption
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 400)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 300)
+    camera.set(cv2.CAP_PROP_FPS, 20)  # Reduced FPS for CPU
+    camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    
+    frame_count = 0
+    last_result = None
+    skip_frames = 3  # Process every 3rd frame for CPU optimization
+
     while True:
         success, frame = camera.read()
         if not success:
             break
 
-        frame,_ = predict_mask(frame)
+        # Process every 3rd frame for speed on CPU
+        if frame_count % skip_frames == 0:
+            last_result = predict_mask(frame)
+        
+        if last_result:
+            frame = last_result[0]
+        
+        frame_count += 1
 
+        # Ultra-low JPEG quality for CPU (faster encoding and lower bandwidth)
         ret, buffer = cv2.imencode(
             '.jpg',
             frame,
-            [int(cv2.IMWRITE_JPEG_QUALITY), 60]
+            [int(cv2.IMWRITE_JPEG_QUALITY), 30]  # Very low quality for speed
         )
 
         frame = buffer.tobytes()

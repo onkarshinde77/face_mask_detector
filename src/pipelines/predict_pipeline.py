@@ -10,6 +10,12 @@ from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE , MODEL_NAME
 from src.exception.exception import CustomException
 from src.logger.logger import logging
 
+# CPU Optimization: Disable GPU and limit threading for CPU efficiency
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Force CPU-only mode
+tf.config.threading.set_inter_op_parallelism_threads(2)
+tf.config.threading.set_intra_op_parallelism_threads(4)
+logging.info("CPU-optimized inference mode enabled")
+
 class PredictPipeline:
     def __init__(self):
         try:
@@ -21,28 +27,44 @@ class PredictPipeline:
             # Check model output shape
             self.output_shape = self.model.output_shape
             
+            # Optimize model for inference on CPU
+            try:
+                self.model.make_predict_function()  # Pre-compile for faster predictions
+            except AttributeError:
+                pass  # Newer TensorFlow versions don't require this
+            
             # Load face cascade
             cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             if not os.path.exists(cascade_path):
                 logging.warning(f"Cascade file not found at {cascade_path}, using default path if available in cv2")
             
             self.face_cascade = cv2.CascadeClassifier(cascade_path)
-            logging.info(f"Model loaded from {self.model_path}")
+            
+            # Cache for last frame processing to reduce redundant work
+            self.last_gray_frame = None
+            
+            logging.info(f"Model loaded from {self.model_path} - CPU Optimized Mode")
         except Exception as e:
             logging.error(f"Error initializing PredictPipeline: {str(e)}")
             raise CustomException(e, sys)
         
     def predict(self, frame):
         try:
-            # 🔹 Resize frame for faster detection (important)
-            small_frame = cv2.resize(frame, (640, 480))
+            # Aggressive resizing for CPU (even smaller = faster)
+            small_frame = cv2.resize(frame, (400, 300))
             gray = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY)
+            
+            # Apply histogram equalization for faster face detection
+            gray = cv2.equalizeHist(gray)
 
+            # Optimize cascade detection for CPU: higher scaleFactor = much faster
             faces = self.face_cascade.detectMultiScale(
                 gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(60, 60)
+                scaleFactor=1.4,  # More aggressive for CPU speed
+                minNeighbors=3,   # Minimal checks for speed
+                minSize=(40, 40), # Smaller min face size
+                maxSize=(180, 180),
+                flags=cv2.CASCADE_SCALE_IMAGE  # Explicit flag for optimization
             )
 
             if len(faces) == 0:
@@ -51,7 +73,11 @@ class PredictPipeline:
             faces_list = []
             faces_rects = []
 
-            for (x, y, w, h) in faces:
+            # Limit to 3 faces max to reduce inference time on CPU
+            max_faces = min(3, len(faces))
+            
+            for i in range(max_faces):
+                x, y, w, h = faces[i]
                 face = small_frame[y:y+h, x:x+w]
 
                 # Convert BGR → RGB
@@ -67,37 +93,45 @@ class PredictPipeline:
                 faces_list.append(face)
                 faces_rects.append((x, y, w, h))
 
+            if not faces_list:
+                return small_frame
+
             faces_array = np.array(faces_list, dtype="float32")
 
-            # 🔹 Use batch_size = len(faces) (faster)
-            preds = self.model.predict(faces_array, batch_size=len(faces_array), verbose=0)
+            # Smaller batch size for CPU (prevents memory overload)
+            batch_size = max(1, min(2, len(faces_array)))
+            preds = self.model.predict(faces_array, batch_size=batch_size, verbose=0)
 
             for i, (x, y, w, h) in enumerate(faces_rects):
 
                 pred = preds[i]
 
-                # 🔹 Binary Classification (Most Common)
+                # Binary Classification
                 if len(pred) == 1:
                     score = float(pred[0])
                     label = "No Mask" if score > 0.5 else "Mask"
                     confidence = score if score > 0.5 else 1 - score
                 else:
+
                     label_idx = np.argmax(pred)
                     confidence = float(pred[label_idx])
                     label = "No Mask" if label_idx == 1 else "Mask"
 
-                # 🔹 Better Color Control
+                # Color: Green for Mask, Red for No Mask
                 if label == "Mask":
                     color = (0, 255, 0)
                 elif label == 'No Mask':
                     color = (0, 0, 255)
                 text = f"{label}: {confidence*100:.1f}%"
+                
                 # Draw rectangle
                 cv2.rectangle(small_frame, (x, y), (x+w, y+h), color, 2)
+                
                 # Draw filled label background
-                (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-                cv2.rectangle(small_frame, (x, y - th - 10), (x + tw, y), color, -1)
-                cv2.putText(small_frame,text,(x, y - 5),cv2.FONT_HERSHEY_SIMPLEX,0.6,(255, 255, 255),2)
+                (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                cv2.rectangle(small_frame, (x, y - th - 8), (x + tw, y), color, -1)
+                cv2.putText(small_frame, text, (x, y - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            
             return small_frame
 
         except Exception as e:
