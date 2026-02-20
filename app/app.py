@@ -10,6 +10,13 @@ from src.pipelines.predict_pipeline import PredictPipeline
 
 prediction = PredictPipeline()
 
+# Load Model ONCE
+# try:
+#     MODEL_PATH = "artifact/models/face_mask_model.h5"
+#     model = load_model(MODEL_PATH)
+# except Exception as e:
+#     raise CustomException(e,sys)
+
 # Load Face Detector (Haarcascade)
 face_detector = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
@@ -22,6 +29,9 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+
+# Initialize Camera ONCE
+
 camera = cv2.VideoCapture(0)
 camera.set(cv2.CAP_PROP_FRAME_WIDTH, 400)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 300)
@@ -32,9 +42,41 @@ camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 def predict_mask(frame):
     return prediction.predict(frame=frame),0
     
+    
+# def predict_mask(frame):
+
+#     # gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+#     faces = face_detector.detectMultiScale(frame, 1.3, 5)
+
+#     for (x, y, w, h) in faces:
+
+#         face = frame[y:y+h, x:x+w]
+#         face_resized = cv2.resize(face, (224, 224))
+
+#         img = preprocess_input(face_resized)
+#         img = np.expand_dims(img, axis=0)
+
+#         prediction = model.predict(img, verbose=0)[0][0]
+
+#         if prediction == 0 :
+#             label = "Mask"
+#             color = (0, 255, 0)
+#         else:
+#             label = "No Mask"
+#             color = (0, 0, 255)
+
+#         cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+#         cv2.putText(frame, label, (x, y-10),
+#                     cv2.FONT_HERSHEY_SIMPLEX,
+#                     0.9, color, 2)
+
+#     return frame , prediction
+
+
 def generate_frames():
     camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     if not camera.isOpened():
+        # Fallback to default backend if DSHOW fails
         camera = cv2.VideoCapture(0)
     
     if not camera.isOpened():
