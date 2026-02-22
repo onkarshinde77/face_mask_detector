@@ -1,29 +1,273 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Upload Photo</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face Mask Detection</title>
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
       body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+      
+      .container {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 900px;
+        width: 100%;
+        padding: 40px;
+      }
+      
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
         text-align: center;
-        font-family: Arial;
+        font-size: 2em;
+      }
+      
+      .upload-section {
+        background: #f8f9fa;
+        border: 2px dashed #667eea;
+        border-radius: 10px;
+        padding: 30px;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      
+      .upload-section input[type='file'] {
+        padding: 10px;
+        margin-bottom: 15px;
+        cursor: pointer;
+      }
+      
+      .upload-section button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      
+      .upload-section button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      }
+      
+      .error {
+        background: #fee;
+        color: #c33;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid #c33;
+      }
+      
+      .result-section {
+        display: none;
+      }
+      
+      .result-section.show {
+        display: block;
+        animation: slideIn 0.5s ease;
+      }
+      
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      
+      .image-container {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      
+      .image-container img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        border: 3px solid #667eea;
+      }
+      
+      .detections {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      
+      .detections h2 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 1.3em;
+      }
+      
+      .detection-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+      }
+      
+      .detection-item {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      
+      .detection-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      }
+      
+      .detection-item.mask {
+        border-left-color: #28a745;
+        background: #f0fdf4;
+      }
+      
+      .detection-item.no-mask {
+        border-left-color: #dc3545;
+        background: #fef2f2;
+      }
+      
+      .detection-label {
+        font-weight: bold;
+        font-size: 1.1em;
+        margin-bottom: 8px;
+      }
+      
+      .detection-item.mask .detection-label {
+        color: #28a745;
+      }
+      
+      .detection-item.no-mask .detection-label {
+        color: #dc3545;
+      }
+      
+      .detection-confidence {
+        color: #666;
+        font-size: 0.95em;
+      }
+      
+      .back-link {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        transition: background 0.2s;
+      }
+      
+      .back-link:hover {
+        background: #764ba2;
+      }
+      
+      @media (max-width: 600px) {
+        .container {
+          padding: 20px;
+        }
+      
+        h1 {
+          font-size: 1.5em;
+        }
+      
+        .detection-list {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>Upload Photo for Detection</h1>
-    <form method="post" enctype="multipart/form-data" style="margin-bottom: 20px;">
-      <input type="file" name="file" accept="image/*" required />
-      <button type="submit" style="padding: 5px 15px;">Detect</button>
-    </form>
+    <div class="container">
+      <h1>🔍 Face Mask Detection</h1>
 
-    {% if image_path %}
-      <div style="margin: 20px;">
-        <h2>Result:{{ detection }}</h2>
-        <img src="{{ image_path }}" style="max-width: 800px; border: 2px solid #333;" />
+      <div class="upload-section">
+        <h2>Upload Image for Detection</h2>
+        <form method="post" enctype="multipart/form-data">
+          <input type="file" name="file" accept="image/*" required />
+          <button type="submit">🚀 Detect Masks</button>
+        </form>
       </div>
-    {% endif %}
 
-    <br />
-    <a href="/" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px;">Back to Home</a>
+      {% if error %}
+        <div class="error">
+          <strong>❌ Error:</strong> {{ error }}
+        </div>
+      {% endif %}
+
+      {% if image_path %}
+        <div class="result-section show">
+          <div class="summary">{{ detection }}</div>
+
+          <div class="image-container">
+            <img src="{{ image_path }}" alt="Detection Result" />
+          </div>
+
+          {% if detections %}
+            <div class="detections">
+              <h2>📊 Detection Details</h2>
+              <div class="detection-list">
+                {% for detection in detections %}
+                  <div class="detection-item {% if detection.label == 'Mask' %}
+                      mask
+                    {% else %}
+                      no-mask
+                    {% endif %}">
+                    <div class="detection-label">
+                      {% if detection.label == 'Mask' %}
+                        ✅ {{ detection.label }}
+                      {% else %}
+                        ⚠️ {{ detection.label }}
+                      {% endif %}
+                    </div>
+                    <div class="detection-confidence">
+                      Face #{{ detection.face_num }}<br />
+                      Confidence: {{ detection.confidence }}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <a href="/" class="back-link">👈 Back to Home</a>
+    </div>
   </body>
 </html>
