@@ -8,20 +8,12 @@ TRAIN_DATASET_PATH =os.path.join("artifact" ,"data2","train")
 VALID_DATASET_PATH =os.path.join("artifact" ,"data2","valid")
 
 MODEL_PATH = os.path.join("artifact" ,"models","face_mask_model2.h5")
-NEW_MODEL_PATH = os.path.join("artifact" ,"models","face_mask_model3.h5")
+NEW_MODEL_PATH = os.path.join("artifact" ,"models","face_mask_model3.keras")
+
 
 # Load existing model
 model = load_model(MODEL_PATH)
-base_model = model.get_layer("vgg16")
-
-for layer in base_model.layers[:-4]:
-    layer.trainable = False
-    
-for layer in base_model.layers[-4:]:
-    layer.trainable = True
-    
-for layer in base_model.layers[:]:
-    print(layer)
+model.get_layer("vgg16").trainable=False
 
 # Freeze first layers
 for layer in model.layers:
