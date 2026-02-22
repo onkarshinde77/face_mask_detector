@@ -110,57 +110,6 @@
         transform: translateY(0);
       }
       
-      .stats {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 30px;
-        border-radius: 15px;
-        margin-top: 40px;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 20px;
-      }
-      
-      .stat-item h3 {
-        font-size: 2em;
-        margin-bottom: 5px;
-      }
-      
-      .stat-item p {
-        opacity: 0.9;
-      }
-      
-      .info-section {
-        background: #f8f9fa;
-        padding: 30px;
-        border-radius: 15px;
-        margin-top: 40px;
-        text-align: left;
-      }
-      
-      .info-section h3 {
-        color: #333;
-        margin-bottom: 15px;
-        font-size: 1.3em;
-      }
-      
-      .info-section ul {
-        list-style: none;
-        color: #666;
-      }
-      
-      .info-section li {
-        padding: 8px 0;
-        line-height: 1.8;
-      }
-      
-      .info-section li:before {
-        content: '✓ ';
-        color: #28a745;
-        font-weight: bold;
-        margin-right: 10px;
-      }
-      
       @media (max-width: 768px) {
         .container {
           padding: 30px 20px;
@@ -205,10 +154,10 @@
         </div>
 
         <div class="feature-card">
-          <div class="icon">📸</div>
-          <h2>Upload Photo</h2>
-          <p>Detect masks in static images with detailed analysis and confidence scores</p>
-          <a href="/upload_photo" class="btn">📤 Upload Photo</a>
+          <div class="icon">�</div>
+          <h2>Capture & Detect</h2>
+          <p>Take a photo with your camera and instantly detect masks</p>
+          <a href="/upload_photo" class="btn">📸 Capture Photo</a>
         </div>
 
         <div class="feature-card">
@@ -218,40 +167,6 @@
           <a href="/upload_video" class="btn">📥 Upload Video</a>
         </div>
       </div>
-
-      <div class="stats">
-        <div class="stat-item">
-          <h3>98%</h3>
-          <p>Face Detection Accuracy</p>
-        </div>
-        <div class="stat-item">
-          <h3>95%</h3>
-          <p>Mask Classification</p>
-        </div>
-        <div class="stat-item">
-          <h3>Real-time</h3>
-          <p>Live Processing</p>
-        </div>
-        <div class="stat-item">
-          <h3>Multi-face</h3>
-          <p>Batch Support</p>
-        </div>
-      </div>
-
-      <div class="info-section">
-        <h3>🌟 Key Features</h3>
-        <ul>
-          <li>Detects multiple faces in a single image</li>
-          <li>Color-coded bounding boxes (Green = Mask, Red = No Mask)</li>
-          <li>Confidence scores for each detection</li>
-          <li>High-quality Caffe DNN face detection</li>
-          <li>VGG16-based mask classification</li>
-          <li>Real-time video and webcam support</li>
-          <li>Batch image processing capability</li>
-          <li>User-friendly web interface</li>
-        </ul>
-      </div>
-
       <footer>
         <p>🚀 Advanced Face Mask Detection System | v2.0</p>
       </footer>
