@@ -1,11 +1,9 @@
 # me written
 data/
 data2/
-app/static
 logs/
 artifact/
-face_mask_dataset/
-
+app/static/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
