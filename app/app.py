@@ -1,13 +1,3 @@
-"""
-app.py — Face Mask Detection Flask Application
-===============================================
-Key design decisions:
-  • NO file saving for images — predict directly from memory, return base64
-  • Video: saved temporarily ONLY for processing, then streamed via Flask
-  • /video_status returns progress % so frontend can show real progress bar
-  • /video_stream/<id> streams the processed video for in-browser playback
-"""
-
 import os
 import sys
 import uuid
@@ -59,7 +49,7 @@ def _pipeline_required(fn):
 # { id: { status, progress, total_frames, output_path, error } }
 VIDEO_JOBS: dict = {}
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+
 def _allowed(filename, allowed_set):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_set
 
@@ -74,11 +64,6 @@ def _build_summary(detections: list) -> str:
     m = sum(1 for d in detections if d["label"] == "Mask")
     n = len(detections) - m
     return f"✅ {len(detections)} Face(s) — {m} With Mask / {n} Without Mask"
-
-
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║                              ROUTES                                     ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
 
 @app.route("/")
 def index():
@@ -144,8 +129,6 @@ def upload_photo():
 
     return jsonify({"success": False, "error": "No valid file or image data."}), 400
 
-
-# ── Video upload + processing ─────────────────────────────────────────────────
 
 def _count_frames(path: str) -> int:
     cap = cv2.VideoCapture(path)
@@ -320,7 +303,6 @@ def video_download(video_id: str):
             "Content-Length"     : str(os.path.getsize(path)),
         },
     )
-
 
 # ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(413)
