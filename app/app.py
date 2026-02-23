@@ -123,7 +123,18 @@ def generate_frames():
     camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
     if not camera.isOpened():
+        # Fallback to default backend if DSHOW fails
         camera = cv2.VideoCapture(0)
+
+    # Optimize camera settings for lower CPU consumption
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 400)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 300)
+    camera.set(cv2.CAP_PROP_FPS, 20)  # Reduced FPS for CPU
+    camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    
+    frame_count = 0
+    last_result = None
+    skip_frames = 3  # Process every 3rd frame for CPU optimization
 
     while True:
         success, frame = camera.read()
