@@ -9,18 +9,13 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from src.pipelines.predict_pipeline import PredictPipeline
 
-# Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import the new predict pipeline
-
 # Initialize the prediction pipeline
 try:
     predict_pipeline = PredictPipeline()
     print("✓ PredictPipeline initialized successfully")
 except Exception as e:
     print(f"⚠ Warning: PredictPipeline initialization failed: {str(e)}")
-    print("Falling back to legacy prediction method")
     predict_pipeline = None
 
 # Legacy model for fallback

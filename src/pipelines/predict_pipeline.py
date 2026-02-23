@@ -36,24 +36,6 @@ class PredictPipeline:
             raise CustomException(e, sys)
     
     def predict_image(self, image_path):
-        """
-        Complete prediction pipeline for image:
-        1. Load image
-        2. Detect faces
-        3. Crop faces
-        4. Predict mask on each face
-        5. Draw bounding boxes with colors and labels
-        
-        Args:
-            image_path: Path to the image file
-            
-        Returns:
-            dict: {
-                'image': Output image with bounding boxes and labels,
-                'detections': List of detections [(coords, label, confidence), ...],
-                'num_faces': Total number of faces detected
-            }
-        """
         try:
             # Load image
             image = cv2.imread(image_path)
@@ -164,25 +146,6 @@ class PredictPipeline:
             raise CustomException(e, sys)
     
     def predict_video(self, video_path=None, save_output=False, output_path=None):
-        """
-        Complete prediction pipeline for video:
-        1. Read video frames
-        2. Detect faces in each frame
-        3. Predict mask on each face
-        4. Draw bounding boxes with colors and labels
-        
-        Args:
-            video_path: Path to video file (None for webcam)
-            save_output: Whether to save output video
-            output_path: Path to save output video
-            
-        Returns:
-            dict: {
-                'status': 'completed',
-                'frames_processed': Total frames processed,
-                'output_path': Path to saved video (if save_output=True)
-            }
-        """
         try:
             # Open video source
             if video_path is None:
@@ -284,15 +247,12 @@ class PredictPipeline:
                 
                 # Display current frame
                 cv2.imshow("Face Mask Detection", frame)
-                
                 # Save frame if output writer is active
                 if out:
                     out.write(frame)
-                
                 # Exit on 'q' key
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-            
             # Release resources
             cap.release()
             if out:
@@ -312,8 +272,5 @@ class PredictPipeline:
             raise CustomException(e, sys)
     
     def predict_webcam(self):
-        """
-        Real-time prediction using webcam
-        """
         return self.predict_video(video_path=None)
 
