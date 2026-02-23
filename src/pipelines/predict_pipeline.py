@@ -23,8 +23,19 @@ logging.info("CPU-optimized inference mode enabled")
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║                      DRAWING HELPERS                                    ║
+# ║                      NUMPY-TO-JSON CONVERTER                            ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
+
+def _to_json_serializable(val):
+    """Convert numpy types to native Python types for JSON serialization."""
+    if isinstance(val, (np.integer, np.int64, np.int32)):
+        return int(val)
+    elif isinstance(val, (np.floating, np.float32, np.float64)):
+        return float(val)
+    elif isinstance(val, np.ndarray):
+        return val.tolist()
+    return val
+
 
 def _draw_detection(frame: np.ndarray, coords: tuple,
                     label: str, confidence: float) -> np.ndarray:
