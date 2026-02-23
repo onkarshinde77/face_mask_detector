@@ -18,7 +18,7 @@
         </div>
         <div class="scan-line"></div>
         <!-- In Django: <img src="{{ url_for('video_feed') }}" class="video-frame" width="640" height="480" /> -->
-        <img src="https://placehold.co/640x480/0e1420/00f0c0?text=VIDEO+FEED" class="video-frame" width="640" height="480" alt="Live camera feed" />
+        <img src="{{ url_for('video_feed') }}" class="video-frame" width="640" height="480" alt="Live camera feed" />
       </div>
 
       <div class="status-bar">
