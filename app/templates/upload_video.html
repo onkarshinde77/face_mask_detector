@@ -1,52 +1,248 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Upload Video - Face Mask Detector</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <title>Upload Video</title>
+    <style>
+      body {
+        text-align: center;
+        font-family: Arial;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        background: white;
+        border-radius: 10px;
+        padding: 30px;
+        max-width: 600px;
+        margin: 0 auto;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      }
+      h1 {
+        color: #333;
+      }
+      form {
+        margin-bottom: 20px;
+      }
+      input[type='file'] {
+        padding: 8px;
+        margin-right: 10px;
+      }
+      button {
+        padding: 10px 25px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #764ba2;
+      }
+      button:disabled {
+        background: #999;
+        cursor: not-allowed;
+      }
+      
+      .upload-container {
+        display: none;
+      }
+      .upload-container.active {
+        display: block;
+      }
+      
+      .loading-container {
+        display: none;
+        margin: 30px 0;
+      }
+      .loading-container.active {
+        display: block;
+      }
+      .loading-line {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 20px 0;
+      }
+      .loading-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        animation: loading 1.5s infinite;
+        width: 30%;
+      }
+      @keyframes loading {
+        0% {
+          width: 0;
+        }
+        50% {
+          width: 100%;
+        }
+        100% {
+          width: 0;
+        }
+      }
+      
+      .success-container {
+        display: none;
+        margin: 30px 0;
+      }
+      .success-container.active {
+        display: block;
+      }
+      .success-message {
+        background: #4caf50;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      .download-btn {
+        background: #4caf50;
+        padding: 12px 30px;
+        text-decoration: none;
+        color: white;
+        border-radius: 5px;
+        display: inline-block;
+      }
+      .download-btn:hover {
+        background: #45a049;
+      }
+      
+      .error-container {
+        display: none;
+        margin: 30px 0;
+      }
+      .error-container.active {
+        display: block;
+      }
+      .error-message {
+        background: #f44336;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      
+      .back-link {
+        padding: 10px 20px;
+        background: #333;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        display: inline-block;
+        margin-top: 20px;
+      }
+      .back-link:hover {
+        background: #555;
+      }
+    </style>
   </head>
   <body>
-    <div class="navbar">
-      <a href="/" class="navbar-brand">🎭 Face Mask Detector</a>
-      <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/upload_photo">Upload Photo</a>
-        <a href="/live">Live Camera</a>
-      </div>
-    </div>
-
     <div class="container">
-      <div class="upload-section">
-        <h1>🎬 Upload Video</h1>
-        <p style="color: #666; margin-bottom: 30px;">Upload a video file to detect face masks in every frame</p>
+      <h1>Upload Video for Detection</h1>
 
-        <form method="post" enctype="multipart/form-data">
-          <label for="file-input" class="file-input-label">
-            <div>📁 Click to choose a video or drag and drop</div>
-            <div class="file-name" id="file-name">No file chosen</div>
-            <input type="file" id="file-input" name="file" accept="video/*" required />
-          </label>
-          <button type="submit" class="btn">🔍 Detect Masks</button>
+      <!-- Upload Form -->
+      <div class="upload-container active" id="uploadContainer">
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+          <input type="file" name="file" accept="video/*" id="fileInput" required />
+          <button type="submit" id="submitBtn">Detect</button>
         </form>
+      </div>
 
-        {% if video_path %}
-          <div class="result-section">
-            <h2>✅ Video Processing Complete</h2>
-            <p class="processing">Your video has been processed and analyzed.</p>
-            <div style="color: #666; margin: 20px 0;">The detected video is ready. You can view the results in the processed output.</div>
-          </div>
-        {% endif %}
+      <!-- Loading/Processing -->
+      <div class="loading-container" id="loadingContainer">
+        <h3>Processing Video...</h3>
+        <p>Your video is being processed with mask detection. This may take a few moments...</p>
+        <div class="loading-line">
+          <div class="loading-bar"></div>
+        </div>
+      </div>
 
-        <a href="/" class="back-link">← Back to Home</a>
+      <!-- Success -->
+      <div class="success-container" id="successContainer">
+        <div class="success-message">✓ Video processed successfully!</div>
+        <a href="#" class="download-btn" id="downloadBtn" download>Download Processed Video</a>
+        <br />
+        <a href="/" class="back-link">Back to Home</a>
+      </div>
+
+      <!-- Error -->
+      <div class="error-container" id="errorContainer">
+        <div class="error-message" id="errorMessage">Error processing video</div>
+        <a href="/" class="back-link">Back to Home</a>
       </div>
     </div>
 
     <script>
-      document.getElementById('file-input').addEventListener('change', function (e) {
-        const fileName = e.target.files[0]?.name || 'No file chosen'
-        document.getElementById('file-name').textContent = fileName
-      })
+      let videoId = null;
+      let checkInterval = null;
+
+      document.getElementById('uploadForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        
+        // Hide upload form
+        document.getElementById('uploadContainer').classList.remove('active');
+        
+        // Show loading
+        document.getElementById('loadingContainer').classList.add('active');
+        
+        // Submit form
+        this.submit();
+      });
+
+      // If we have a processing video ID (from Flask template)
+      {% if processing %}
+        videoId = '{{ video_id }}';
+        console.log('Starting to monitor video processing:', videoId);
+        startMonitoring();
+      {% endif %}
+
+      function startMonitoring() {
+        if (!videoId) return;
+        
+        checkInterval = setInterval(function () {
+          fetch('/check_video_status/' + videoId)
+            .then(response => response.json())
+            .then(data => {
+              console.log('Status check:', data);
+              
+              if (data.status === 'completed') {
+                clearInterval(checkInterval);
+                
+                // Hide loading
+                document.getElementById('loadingContainer').classList.remove('active');
+                
+                // Show success
+                document.getElementById('successContainer').classList.add('active');
+                
+                // Set download link
+                const downloadBtn = document.getElementById('downloadBtn');
+                downloadBtn.href = data.video_path;
+              } else if (data.status === 'error') {
+                clearInterval(checkInterval);
+                
+                // Hide loading
+                document.getElementById('loadingContainer').classList.remove('active');
+                
+                // Show error
+                document.getElementById('errorContainer').classList.add('active');
+                document.getElementById('errorMessage').textContent = '✗ ' + (data.error || 'Error processing video');
+              }
+            })
+            .catch(error => {
+              console.error('Error checking status:', error);
+              clearInterval(checkInterval);
+              
+              // Show error
+              document.getElementById('loadingContainer').classList.remove('active');
+              document.getElementById('errorContainer').classList.add('active');
+              document.getElementById('errorMessage').textContent = '✗ Connection error while processing';
+            });
+        }, 500); // Check every 500ms
+      }
     </script>
   </body>
 </html>

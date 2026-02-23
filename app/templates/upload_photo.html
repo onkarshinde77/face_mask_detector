@@ -1,10 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Upload Photo - Face Mask Detector</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <title>Upload Photo</title>
+    <style>
+      body {
+        text-align: center;
+        font-family: Arial;
+      }
+      
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #f0f0f0;
+      }
+      
+      .tab-btn {
+        padding: 12px 20px;
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 1em;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+      }
+      
+      .tab-btn.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        font-weight: bold;
+      }
+      
+      .tab-btn:hover {
+        color: #667eea;
+      }
+      
+      .tab-content {
+        display: none;
+      }
+      
+      .tab-content.active {
+        display: block;
+      }
+      
+      #camera-container {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      
+      #camera-video {
+        width: 100%;
+        max-width: 500px;
+        border-radius: 10px;
+        background: #000;
+        margin-bottom: 15px;
+      }
+      
+      #canvas {
+        display: none;
+      }
+      
+      .camera-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      
+      .camera-buttons button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.95em;
+      }
+      
+      .camera-buttons button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+      }
+      
+      .camera-buttons button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      .camera-buttons button.secondary {
+        background: #6c757d;
+      }
+      
+      .camera-buttons button.success {
+        background: #28a745;
+      }
+      
+      .camera-info {
+        background: #e7f3ff;
+        border-left: 4px solid #2196f3;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        text-align: left;
+        color: #333;
+      }
+    </style>
   </head>
   <body>
     <div class="navbar">
