@@ -1,80 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Face Mask Detection</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/upload_photo.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>📸 Mask Detection</h1>
 
-    <!-- External CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/upload_photo.css') }}">
-</head>
-<body>
-
-<div class="container">
-    <h1>📸 Mask Detection</h1>
-
-    <!-- Tabs -->
-    <div class="tabs">
+      <!-- Tabs -->
+      <div class="tabs">
         <button class="tab-btn active" data-tab="upload">📤 Upload Photo</button>
         <button class="tab-btn" data-tab="capture">📷 Capture Photo</button>
-    </div>
+      </div>
 
-    <!-- Upload Tab -->
-    <div id="upload-tab" class="tab-content active">
+      <!-- Upload Tab -->
+      <div id="upload-tab" class="tab-content active">
         <div class="upload-section">
-            <form method="post" enctype="multipart/form-data" id="uploadForm">
-                <input type="file" name="file" accept="image/*" required id="fileInput" hidden>
-
-                <button type="button" class="btn btn-secondary" id="selectBtn">
-                    📁 Select Image
-                </button>
-
-                <p id="fileLabel">No file chosen</p>
-
-                <button type="submit" class="btn btn-success" id="uploadSubmit">
-                    🚀 Start Detection
-                </button>
-            </form>
+          <form method="post" enctype="multipart/form-data" id="uploadForm">
+            <input type="file" name="file" accept="image/*" required id="fileInput" hidden />
+            <button type="button" class="btn btn-secondary" id="selectBtn">📁 Select Image</button>
+            <p id="fileLabel" style="margin-top:4px;">No file chosen</p>
+            <button type="submit" class="btn btn-success" id="uploadSubmit" style="margin-top:8px;">🚀 Start Detection</button>
+          </form>
         </div>
-    </div>
+      </div>
 
-    <!-- Capture Tab -->
-    <div id="capture-tab" class="tab-content">
+      <!-- Capture Tab -->
+      <div id="capture-tab" class="tab-content">
         <div class="upload-section">
-            <video id="cameraVideo" autoplay playsinline muted class="camera-video"></video>
-            <div id="previewContainer"></div>
-            <canvas id="canvas" hidden></canvas>
-
-            <div class="camera-buttons">
-                <button id="startCameraBtn" class="btn">▶️ Start Camera</button>
-                <button id="captureBtn" class="btn btn-success" disabled>📸 Capture</button>
-                <button id="retakeBtn" class="btn btn-secondary hidden">🔄 Retake</button>
-                <button id="analyzeBtn" class="btn btn-success hidden">✅ Analyze Mask</button>
-            </div>
+          <video id="cameraVideo" autoplay playsinline muted class="camera-video"></video>
+          <div id="previewContainer"></div>
+          <canvas id="canvas" hidden></canvas>
+          <div class="camera-buttons">
+            <button id="startCameraBtn" class="btn">▶️ Start Camera</button>
+            <button id="captureBtn" class="btn btn-success" disabled>📸 Capture</button>
+            <button id="retakeBtn" class="btn btn-secondary hidden">🔄 Retake</button>
+            <button id="analyzeBtn" class="btn btn-success hidden">✅ Analyze Mask</button>
+          </div>
         </div>
-    </div>
+      </div>
 
-    {% if image_path %}
-    <div class="result-section">
-        <div class="summary">{{ detection }}</div>
+      <!-- Result Section (mock data for preview) -->
+      <div class="result-section">
+        <div class="summary">✅ 2 Faces Detected — 1 With Mask / 1 Without Mask</div>
 
-        <img src="{{ image_path }}" class="result-image">
+        <img src="https://placehold.co/640x400/0e1420/00f0c0?text=DETECTION+RESULT" class="result-image" alt="Detection result" />
 
         <div class="detection-list">
-            {% for d in detections %}
-            <div class="detection-item {{ 'mask' if d.label == 'Mask' else 'no-mask' }}">
-                <strong>{{ d.label }}</strong><br>
-                Face : {{ d.face_num }}<br>
-                Confidence: {{ d.confidence }}
-            </div>
-            {% endfor %}
+          <div class="detection-item mask">
+            <strong>Mask ✓</strong>
+            Face : 1<br />
+            Confidence: 97.4%
+          </div>
+          <div class="detection-item no-mask">
+            <strong>No Mask ✗</strong>
+            Face : 2<br />
+            Confidence: 91.2%
+          </div>
         </div>
+      </div>
     </div>
-    {% endif %}
-</div>
 
-<!-- External JS -->
-<script src="{{ url_for('static', filename='js/upload_photo.js') }}"></script>
-
-</body>
+    <script>
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'))
+          document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'))
+          btn.classList.add('active')
+          document.getElementById(btn.dataset.tab + '-tab').classList.add('active')
+        })
+      })
+      
+      // File input label
+      document.getElementById('selectBtn').addEventListener('click', () => {
+        document.getElementById('fileInput').click()
+      })
+      
+      document.getElementById('fileInput').addEventListener('change', (e) => {
+        const name = e.target.files[0]?.name || 'No file chosen'
+        document.getElementById('fileLabel').textContent = name
+      })
+    </script>
+  </body>
 </html>
