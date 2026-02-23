@@ -7,12 +7,12 @@ import json
 from flask import Flask, render_template, Response, request, redirect, url_for, jsonify
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.vgg16 import preprocess_input
+from src.pipelines.predict_pipeline import PredictPipeline
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the new predict pipeline
-from src.pipelines.predict_pipeline import PredictPipeline
 
 # Initialize the prediction pipeline
 try:
@@ -24,11 +24,11 @@ except Exception as e:
     predict_pipeline = None
 
 # Legacy model for fallback
-MODEL_PATH = "artifact/models/face_mask_model2.h5"
-try:
-    model = load_model(MODEL_PATH)
-except:
-    model = None
+# MODEL_PATH = "artifact/models/face_mask_model4.keras"
+# try:
+#     model = load_model(MODEL_PATH)
+# except:
+#     model = None
 
 # FACE DETECTOR (Legacy)
 face_detector = cv2.CascadeClassifier(
@@ -418,4 +418,5 @@ def check_video_status(video_id):
 
 
 if __name__ == "__main__":
+    # app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

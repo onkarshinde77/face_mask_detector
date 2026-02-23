@@ -4,12 +4,11 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.optimizers import Adam
 
-TRAIN_DATASET_PATH =os.path.join("artifact" ,"data2","train")
-VALID_DATASET_PATH =os.path.join("artifact" ,"data2","valid")
+TRAIN_DATASET_PATH =os.path.join("face_mask_dataset" ,"train")
+VALID_DATASET_PATH =os.path.join("face_mask_dataset" ,"valid")
 
-MODEL_PATH = os.path.join("artifact" ,"models","face_mask_model2.h5")
-NEW_MODEL_PATH = os.path.join("artifact" ,"models","face_mask_model3.keras")
-
+MODEL_PATH = os.path.join("artifact" ,"models","face_mask_model3.keras")
+NEW_MODEL_PATH = os.path.join("artifact" ,"models","face_mask_model4.keras")
 
 # Load existing model
 model = load_model(MODEL_PATH)

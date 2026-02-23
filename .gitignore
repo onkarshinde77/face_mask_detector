@@ -4,6 +4,7 @@ data2/
 app/static
 logs/
 artifact/
+face_mask_dataset/
 
 
 # Byte-compiled / optimized / DLL files
