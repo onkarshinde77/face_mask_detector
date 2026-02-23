@@ -164,11 +164,14 @@ class PredictPipeline:
                 coords = cropped[idx]["coords"]          # (startX, startY, endX, endY)
                 _draw_detection(annotated, coords, label, conf)
 
+                # Convert numpy int64 to Python int for JSON serialization
+                coords_serializable = [int(c) for c in coords]
+
                 detections.append({
                     "face_num"  : idx + 1,
                     "label"     : label,
                     "confidence": f"{conf * 100:.1f}%",
-                    "coords"    : coords,
+                    "coords"    : coords_serializable,
                 })
 
             return annotated, detections

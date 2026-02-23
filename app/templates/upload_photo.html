@@ -9,33 +9,30 @@
   <body>
     <div class="container">
       <h1>📸 Mask Detection</h1>
-      <!-- Tabs -->
+
       <div class="tabs">
         <button class="tab-btn active" data-tab="upload">📤 Upload Photo</button>
         <button class="tab-btn" data-tab="capture">📷 Capture Photo</button>
       </div>
-      <!-- Upload Tab -->
+
+      <!-- ── Upload Tab ── -->
       <div id="upload-tab" class="tab-content active">
         <div class="upload-section">
-          <form method="post" enctype="multipart/form-data" id="uploadForm">
-            <input type="file" name="file" accept="image/*" required id="fileInput" hidden />
-            <button type="button" class="btn btn-secondary" id="selectBtn">📁 Select Image</button>
-            <p id="fileLabel">No file chosen</p>
-            <button type="submit" class="btn btn-success" id="uploadSubmit">🚀 Start Detection</button>
-          </form>
+          <input type="file" name="file" accept="image/*" id="fileInput" hidden />
+          <button type="button" class="btn btn-secondary" id="selectBtn">📁 Select Image</button>
+          <p id="fileLabel">No file chosen</p>
+          <button type="button" class="btn btn-success" id="uploadSubmit">🚀 Start Detection</button>
         </div>
       </div>
-      <!-- Capture Tab -->
+
+      <!-- ── Capture Tab ── -->
       <div id="capture-tab" class="tab-content">
         <div class="upload-section">
-          <!-- Idle placeholder (shown before camera starts) -->
           <div id="cameraPlaceholder" class="camera-placeholder">
             <div class="camera-placeholder-icon">📷</div>
             <p>Click <strong>Start Camera</strong> to enable your webcam</p>
           </div>
-          <!-- Live feed (hidden until camera starts) -->
           <video id="cameraVideo" autoplay playsinline muted class="camera-video"></video>
-          <!-- Snapshot preview (hidden until captured) -->
           <div id="previewContainer"></div>
           <canvas id="canvas" hidden></canvas>
           <div class="camera-buttons">
@@ -47,22 +44,9 @@
           </div>
         </div>
       </div>
-      <!-- Result Section (Jinja2 on page reload OR JS after AJAX) -->
-      {% if image_path %}
-      <div class="result-section">
-        <div class="summary">{{ detection }}</div>
-        <img src="{{ image_path }}" class="result-image" alt="Detection result" />
-        <div class="detection-list">
-          {% for d in detections %}
-          <div class="detection-item {{ 'mask' if d.label == 'Mask' else 'no-mask' }}">
-            <strong>{{ 'Mask ✓' if d.label == 'Mask' else 'No Mask ✗' }}</strong>
-            Face : {{ d.face_num }}<br />
-            Confidence: {{ d.confidence }}
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
+
+      <!-- ── Result Section (rendered by JS) ── -->
+      <div id="resultSection" class="result-section" style="display:none;"></div>
     </div>
 
     <script src="{{ url_for('static', filename='js/upload_photo.js') }}"></script>

@@ -10,34 +10,51 @@
     <div class="container">
       <h1>🎬 Face Mask Detection — Video Upload</h1>
 
-      <!-- Upload -->
+      <!-- ── Upload panel ── -->
       <div class="upload-container active" id="uploadContainer">
         <h2>📤 Upload Video for Detection</h2>
         <div class="form-input">
           <input type="file" name="file" accept="video/*" id="fileInput" required />
-          <label for="fileInput" class="file-input-label" id="dropLabel">🎥 <span id="fileLabel">Choose Video File</span></label>
+          <label for="fileInput" class="file-input-label" id="dropLabel">
+            🎥 <span id="fileLabel">Choose Video File</span>
+          </label>
         </div>
         <button type="button" class="btn btn-lg" id="submitBtn">🚀 Detect Masks</button>
       </div>
 
-      <!-- Loading -->
+      <!-- ── Loading panel with real progress ── -->
       <div class="loading-container" id="loadingContainer">
         <div class="loading-spinner"></div>
         <div class="loading-text">Processing Video...</div>
-        <div class="loading-subtext">Your video is being processed with mask detection. Please wait…</div>
-        <div class="loading-line">
-          <div class="loading-bar"></div>
+        <div class="loading-subtext">Running mask detection frame by frame. Please wait…</div>
+
+        <div class="progress-wrapper">
+          <div class="progress-header">
+            <span>PROGRESS</span>
+            <span class="progress-pct" id="progressPct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Success -->
+      <!-- ── Success panel with video player ── -->
       <div class="success-container" id="successContainer">
         <div class="success-message">✅ Video processed successfully!</div>
-        <a href="#" class="download-btn" id="downloadBtn" download>📥 Download Processed Video</a>
-        <a href="/" class="back-link">← Back to Home</a>
+
+        <!-- In-browser video player -->
+        <video id="videoPlayer" class="video-preview" controls playsinline>
+          Your browser does not support the video tag.
+        </video>
+
+        <div class="video-actions">
+          <a href="#" class="download-btn" id="downloadBtn" download>📥 Download Video</a>
+          <a href="/" class="back-link">← Back to Home</a>
+        </div>
       </div>
 
-      <!-- Error -->
+      <!-- ── Error panel ── -->
       <div class="error-container" id="errorContainer">
         <div class="error-message" id="errorMessage">❌ Error processing video</div>
         <a href="/" class="back-link">← Back to Home</a>
