@@ -1,106 +1,360 @@
 import os
 import sys
+import base64
+import threading
 import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.vgg16 import preprocess_input
-from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE , MODEL_NAME
+
+from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE, MODEL_NAME
 from src.exception.exception import CustomException
 from src.logger.logger import logging
 
-# CPU Optimization: Disable GPU and limit threading for CPU efficiency
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Force CPU-only mode
+# ── CPU / GPU config ─────────────────────────────────────────────────────────
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'          # Force CPU
 tf.config.threading.set_inter_op_parallelism_threads(2)
 tf.config.threading.set_intra_op_parallelism_threads(4)
 logging.info("CPU-optimized inference mode enabled")
 
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║                      DRAWING HELPERS                                    ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+def _draw_detection(frame: np.ndarray, coords: tuple,
+                    label: str, confidence: float) -> np.ndarray:
+    """
+    Draw a bounding box + filled label banner on *frame* (in-place).
+    Returns the same frame for convenience.
+    """
+    startX, startY, endX, endY = coords
+    color = (0, 255, 0) if label == "Mask" else (0, 0, 255)   # BGR
+
+    # Bounding box
+    cv2.rectangle(frame, (startX, startY), (endX, endY), color, 3)
+
+    # Label text
+    text = f"{label}: {confidence * 100:.1f}%"
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+
+    # Filled background rectangle for text
+    cv2.rectangle(
+        frame,
+        (startX, startY - th - 15),
+        (startX + tw + 10, startY),
+        color,
+        cv2.FILLED,
+    )
+
+    # White text on top
+    cv2.putText(
+        frame, text,
+        (startX + 5, startY - 5),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+        (255, 255, 255), 2,
+    )
+    return frame
+
+
+def _parse_prediction(pred: np.ndarray) -> tuple[str, float]:
+    """
+    Normalise model output regardless of whether the model outputs
+    a single sigmoid score or a 2-class softmax vector.
+    Returns (label, confidence_0_to_1).
+    """
+    if pred.shape[0] == 1:
+        score = float(pred[0])
+        label = "No Mask" if score > 0.5 else "Mask"
+        conf  = score if score > 0.5 else 1.0 - score
+    else:
+        idx   = int(np.argmax(pred))
+        label = "No Mask" if idx == 1 else "Mask"
+        conf  = float(pred[idx])
+    return label, conf
+
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║                    PREDICTION PIPELINE (SINGLETON)                      ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
 class PredictPipeline:
+    """
+    Thread-safe, singleton-like pipeline.
+
+    Usage
+    -----
+        pipeline = PredictPipeline()        # load once at startup
+
+        # Single image path
+        result = pipeline.predict_image(image_path)
+
+        # Raw BGR numpy frame (from webcam / video)
+        annotated, detections = pipeline.predict_frame(frame)
+
+        # Generator for video files (server-side, headless)
+        for ann_frame, dets in pipeline.predict_video_frames(video_path):
+            ...
+    """
+
+    _instance_lock = threading.Lock()
+
     def __init__(self):
         try:
             self.model_path = os.path.join(ARTIFACT_DIR, MODEL_DIR, MODEL_NAME)
             if not os.path.exists(self.model_path):
-                 raise FileNotFoundError(f"Model not found at {self.model_path}")
-            
+                raise FileNotFoundError(f"Model not found at {self.model_path}")
+
+            logging.info(f"Loading model from: {self.model_path}")
             self.model = load_model(self.model_path)
             # Check model output shape
             self.output_shape = self.model.output_shape
-            
-            # Optimize model for inference on CPU
-            try:
-                self.model.make_predict_function()  # Pre-compile for faster predictions
-            except AttributeError:
-                pass  # Newer TensorFlow versions don't require this
-            
-            # Load face cascade
-            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-            if not os.path.exists(cascade_path):
-                logging.warning(f"Cascade file not found at {cascade_path}, using default path if available in cv2")
-            
+
+            # Warm-up: run one dummy prediction to initialise TF graph
+            dummy = np.zeros((1, IMG_SIZE, IMG_SIZE, 3), dtype="float32")
+            self.model.predict(dummy, verbose=0)
+            logging.info("Model warm-up complete")
+
+            # Face detectors
+            self.face_cropper = FaceCropper()
+
+            # Haar cascade as backup
+            cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
             self.face_cascade = cv2.CascadeClassifier(cascade_path)
-            
-            # Cache for last frame processing to reduce redundant work
-            self.last_gray_frame = None
-            
-            logging.info(f"Model loaded from {self.model_path} - CPU Optimized Mode")
+
+            # Per-instance lock for thread-safe inference
+            self._infer_lock = threading.Lock()
+
+            logging.info("PredictPipeline initialised successfully")
+
         except Exception as e:
-            logging.error(f"Error initializing PredictPipeline: {str(e)}")
+            logging.error(f"PredictPipeline init error: {e}")
             raise CustomException(e, sys)
 
-    def predict(self, frame):
+    # ── Core: preprocess + batch-predict a list of face crops ────────────────
+    def _infer_faces(self, face_crops: list[np.ndarray]) -> np.ndarray:
+        """
+        Preprocess a list of BGR face crops and run a single batch prediction.
+        Thread-safe via self._infer_lock.
+        """
+        preprocessed = []
+        for face in face_crops:
+            rgb     = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+            resized = cv2.resize(rgb, (IMG_SIZE, IMG_SIZE))
+            arr     = np.asarray(resized, dtype="float32")
+            arr     = preprocess_input(arr)
+            preprocessed.append(arr)
+
+        batch = np.array(preprocessed, dtype="float32")
+        with self._infer_lock:
+            preds = self.model.predict(batch, verbose=0)
+        return preds
+
+    # ── Public: predict a single raw BGR frame ───────────────────────────────
+    def predict_frame(
+        self,
+        frame: np.ndarray,
+    ) -> tuple[np.ndarray, list[dict]]:
+        """
+        Run face detection + mask prediction on one BGR frame.
+
+        Returns
+        -------
+        annotated_frame : np.ndarray   BGR frame with boxes/labels drawn
+        detections      : list[dict]   [{label, face_num, confidence, coords}]
+        """
         try:
-            # Detect faces in grayscale
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
-            
-            faces_list = []
-            faces_rects = []
+            faces = self.face_cropper.detect_faces(frame)
+            annotated  = frame.copy()
+            detections = []
 
-            for (x, y, w, h) in faces:
-                # Preprocess face for model (resize to 224x224, RGB)
-                face_img = frame[y:y+h, x:x+w]
-                # Convert BGR to RGB for model
-                face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-                face_img = cv2.resize(face_img, (IMG_SIZE, IMG_SIZE))
-                face_img = img_to_array(face_img)
-                face_img = preprocess_input(face_img) # VGG16 preprocess expects RGB
-                faces_list.append(face_img)
-                faces_rects.append((x, y, w, h))
-            
-            if len(faces_list) > 0:
-                faces_array = np.array(faces_list, dtype="float32")
-                preds = self.model.predict(faces_array, batch_size=32)
-            else:
-                return frame # No faces detected
+            if not faces or len(faces) == 0:
+                return annotated, detections
 
-            for (i, (x, y, w, h)) in enumerate(faces_rects):
-                pred = preds[i]
-                
-                # Logic for class determination
-                # Assuming 0: "Mask" (with_mask), 1: "No Mask" (without_mask)
-                if pred.shape[0] == 1 or (len(pred.shape) == 0):
-                     # Binary case
-                     score = pred[0] if len(pred) > 0 else pred
-                     label = "No Mask" if score > 0.5 else "Mask"
-                     confidence = score if score > 0.5 else 1 - score
-                else:
-                    # Multi-class or 2-node softmax
-                    # Index 0: Mask, Index 1: No Mask (alphabetical)
-                    # wait, 'with_mask' < 'without_mask'
-                    label_idx = np.argmax(pred)
-                    label = "No Mask" if label_idx == 1 else "Mask"
-                    confidence = pred[label_idx]
+            cropped = self.face_cropper.crop_faces(frame, faces)
+            face_crops = [c["face"] for c in cropped]
+            preds      = self._infer_faces(face_crops)
 
-                # Color: Green for Mask, Red for No Mask
-                color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
-                
-                label_text = "{}: {:.2f}%".format(label, confidence * 100)
-                
-                cv2.putText(frame, label_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2)
-                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-            
-            return frame
+            for idx, pred in enumerate(preds):
+                label, conf = _parse_prediction(pred)
+                coords = cropped[idx]["coords"]          # (startX, startY, endX, endY)
+                _draw_detection(annotated, coords, label, conf)
+
+                detections.append({
+                    "face_num"  : idx + 1,
+                    "label"     : label,
+                    "confidence": f"{conf * 100:.1f}%",
+                    "coords"    : coords,
+                })
+
+            return annotated, detections
+
         except Exception as e:
-            logging.error(f"Error in prediction: {str(e)}")
-            return frame
+            logging.error(f"predict_frame error: {e}")
+            raise CustomException(e, sys)
+
+    # ── Public: predict from image path (used by photo-upload route) ──────────
+    def predict_image(self, image_path: str) -> dict:
+        """
+        Load an image from disk, run detection, return result dict.
+
+        Returns
+        -------
+        {
+            'image'      : annotated BGR ndarray,
+            'detections' : [{ label, face_num, confidence, coords }],
+            'num_faces'  : int,
+        }
+        """
+        try:
+            frame = cv2.imread(image_path)
+            if frame is None:
+                raise FileNotFoundError(f"Cannot read image: {image_path}")
+
+            annotated, detections = self.predict_frame(frame)
+
+            return {
+                "image"     : annotated,
+                "detections": detections,
+                "num_faces" : len(detections),
+            }
+
+        except Exception as e:
+            logging.error(f"predict_image error: {e}")
+            raise CustomException(e, sys)
+
+    # ── Public: predict from base64 string (used by webcam-capture route) ─────
+    def predict_base64(self, b64_string: str) -> dict:
+        """
+        Decode a data-URL base64 image string, run detection, return result dict.
+
+        Returns same shape as predict_image().
+        """
+        try:
+            # Strip data-URL header if present
+            if "," in b64_string:
+                b64_string = b64_string.split(",", 1)[1]
+
+            img_bytes = np.frombuffer(base64.b64decode(b64_string), np.uint8)
+            frame = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
+
+            if frame is None:
+                raise ValueError("Could not decode base64 image")
+
+            annotated, detections = self.predict_frame(frame)
+
+            return {
+                "image"     : annotated,
+                "detections": detections,
+                "num_faces" : len(detections),
+            }
+
+        except Exception as e:
+            logging.error(f"predict_base64 error: {e}")
+            raise CustomException(e, sys)
+
+    # ── Public: generator for server-side video processing ───────────────────
+    def predict_video_frames(
+        self,
+        video_path: str,
+        frame_skip: int = 0,
+    ):
+        """
+        Generator that yields (annotated_frame, detections) for each frame.
+
+        Parameters
+        ----------
+        video_path  : str   path to input video file
+        frame_skip  : int   process every (frame_skip + 1)-th frame;
+                            skipped frames are yielded with the last detection
+                            drawn on them (keeps output fps stable).
+
+        Yields
+        ------
+        (annotated_frame: np.ndarray, detections: list[dict])
+        """
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise ValueError(f"Cannot open video: {video_path}")
+
+        frame_idx      = 0
+        last_annotated = None
+        last_detections: list[dict] = []
+
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if frame_skip > 0 and frame_idx % (frame_skip + 1) != 0:
+                    # Re-use previous detections on this raw frame to maintain fps
+                    yield (frame if last_annotated is None else last_annotated.copy(),
+                           last_detections)
+                else:
+                    annotated, detections = self.predict_frame(frame)
+                    last_annotated  = annotated
+                    last_detections = detections
+                    yield annotated, detections
+
+                frame_idx += 1
+
+        finally:
+            cap.release()
+            logging.info(f"predict_video_frames: {frame_idx} frames processed")
+
+    # ── Public: live webcam generator (for Flask MJPEG stream) ───────────────
+    def generate_live_frames(
+        self,
+        camera_index: int  = 0,
+        frame_skip: int    = 1,
+        jpeg_quality: int  = 80,
+    ):
+        """
+        Generator that yields MJPEG-ready bytes for the Flask Response.
+
+        frame_skip=1  → process every other frame (halves CPU on low-end hw)
+        """
+        cap = cv2.VideoCapture(camera_index)
+        if not cap.isOpened():
+            # Yield a single "no camera" placeholder frame and stop
+            placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(
+                placeholder, "No Camera Found",
+                (140, 240), cv2.FONT_HERSHEY_SIMPLEX,
+                1.2, (0, 200, 128), 2,
+            )
+            _, buf = cv2.imencode(".jpg", placeholder)
+            yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n"
+            return
+
+        frame_idx      = 0
+        last_annotated = None
+
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if frame_skip > 0 and frame_idx % (frame_skip + 1) != 0:
+                    out = last_annotated if last_annotated is not None else frame
+                else:
+                    out, _ = self.predict_frame(frame)
+                    last_annotated = out
+
+                encode_params = [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality]
+                _, buf = cv2.imencode(".jpg", out, encode_params)
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n"
+                    + buf.tobytes()
+                    + b"\r\n"
+                )
+                frame_idx += 1
+
+        finally:
+            cap.release()
+            logging.info("generate_live_frames: camera released")

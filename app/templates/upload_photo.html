@@ -1,156 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Upload Photo</title>
-    <style>
-      body {
-        text-align: center;
-        font-family: Arial;
-      }
-      
-      .tabs {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 30px;
-        border-bottom: 2px solid #f0f0f0;
-      }
-      
-      .tab-btn {
-        padding: 12px 20px;
-        background: none;
-        border: none;
-        color: #666;
-        font-size: 1em;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-        transition: all 0.3s ease;
-      }
-      
-      .tab-btn.active {
-        color: #667eea;
-        border-bottom-color: #667eea;
-        font-weight: bold;
-      }
-      
-      .tab-btn:hover {
-        color: #667eea;
-      }
-      
-      .tab-content {
-        display: none;
-      }
-      
-      .tab-content.active {
-        display: block;
-      }
-      
-      #camera-container {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-      
-      #camera-video {
-        width: 100%;
-        max-width: 500px;
-        border-radius: 10px;
-        background: #000;
-        margin-bottom: 15px;
-      }
-      
-      #canvas {
-        display: none;
-      }
-      
-      .camera-buttons {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-      
-      .camera-buttons button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 0.95em;
-      }
-      
-      .camera-buttons button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-      }
-      
-      .camera-buttons button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      
-      .camera-buttons button.secondary {
-        background: #6c757d;
-      }
-      
-      .camera-buttons button.success {
-        background: #28a745;
-      }
-      
-      .camera-info {
-        background: #e7f3ff;
-        border-left: 4px solid #2196f3;
-        padding: 12px;
-        border-radius: 4px;
-        margin-bottom: 15px;
-        text-align: left;
-        color: #333;
-      }
-    </style>
+    <meta charset="UTF-8" />
+    <title>Face Mask Detection</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/upload_photo.css') }}" />
   </head>
   <body>
-    <div class="navbar">
-      <a href="/" class="navbar-brand">🎭 Face Mask Detector</a>
-      <div class="nav-links">
-        <a href="/">Home</a>
-        <a href="/upload_video">Upload Video</a>
-        <a href="/live">Live Camera</a>
-      </div>
-    </div>
-
     <div class="container">
-      <div class="upload-section">
-        <h1>📷 Upload Photo</h1>
-        <p style="color: #666; margin-bottom: 30px;">Select an image to detect face masks</p>
+      <h1>📸 Mask Detection</h1>
 
-        <form method="post" enctype="multipart/form-data">
-          <label for="file-input" class="file-input-label">
-            <div>📁 Click to choose a photo or drag and drop</div>
-            <div class="file-name" id="file-name">No file chosen</div>
-            <input type="file" id="file-input" name="file" accept="image/*" required />
-          </label>
-          <button type="submit" class="btn">🔍 Detect Masks</button>
-        </form>
-
-        {% if image_path %}
-          <div class="result-section">
-            <h2>✅ Detection Results</h2>
-            <div style="color: #555; margin-bottom: 20px; font-size: 16px;">
-              <strong>Status: {{ detection }}</strong>
-            </div>
-            <img src="{{ image_path }}" alt="Detection result" class="result-image" />
-          </div>
-        {% endif %}
-
-        <a href="/" class="back-link">← Back to Home</a>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="upload">📤 Upload Photo</button>
+        <button class="tab-btn" data-tab="capture">📷 Capture Photo</button>
       </div>
+
+      <!-- ── Upload Tab ── -->
+      <div id="upload-tab" class="tab-content active">
+        <div class="upload-section">
+          <input type="file" name="file" accept="image/*" id="fileInput" hidden />
+          <button type="button" class="btn btn-secondary" id="selectBtn">📁 Select Image</button>
+          <p id="fileLabel">No file chosen</p>
+          <button type="button" class="btn btn-success" id="uploadSubmit">🚀 Start Detection</button>
+        </div>
+      </div>
+
+      <!-- ── Capture Tab ── -->
+      <div id="capture-tab" class="tab-content">
+        <div class="upload-section">
+          <div id="cameraPlaceholder" class="camera-placeholder">
+            <div class="camera-placeholder-icon">📷</div>
+            <p>
+              Click <strong>Start Camera</strong> to enable your webcam
+            </p>
+          </div>
+          <video id="cameraVideo" autoplay playsinline muted class="camera-video"></video>
+          <div id="previewContainer"></div>
+          <canvas id="canvas" hidden></canvas>
+          <div class="camera-buttons">
+            <button id="startCameraBtn" class="btn btn-secondary">▶️ Start Camera</button>
+            <button id="captureBtn" class="btn btn-success hidden">📸 Capture</button>
+            <button id="stopCameraBtn" class="btn hidden">⏹ Stop</button>
+            <button id="retakeBtn" class="btn btn-secondary hidden">🔄 Retake</button>
+            <button id="analyzeBtn" class="btn btn-success hidden">✅ Analyze Mask</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Result Section (rendered by JS) ── -->
+      <div id="resultSection" class="result-section" style="display:none;"></div>
     </div>
 
-    <script>
-      document.getElementById('file-input').addEventListener('change', function (e) {
-        const fileName = e.target.files[0]?.name || 'No file chosen'
-        document.getElementById('file-name').textContent = fileName
-      })
-    </script>
+    <script src="{{ url_for('static', filename='js/upload_photo.js') }}"></script>
   </body>
 </html>
