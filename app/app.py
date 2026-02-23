@@ -12,7 +12,25 @@ from src.pipelines.predict_pipeline import PredictPipeline
 MODEL_PATH = "artifact/models/face_mask_model2.h5"
 model = load_model(MODEL_PATH)
 
-# FACE DETECTOR
+# Import the new predict pipeline
+
+# Initialize the prediction pipeline
+try:
+    predict_pipeline = PredictPipeline()
+    print("✓ PredictPipeline initialized successfully")
+except Exception as e:
+    print(f"⚠ Warning: PredictPipeline initialization failed: {str(e)}")
+    print("Falling back to legacy prediction method")
+    predict_pipeline = None
+
+# Legacy model for fallback
+MODEL_PATH = "artifact/models/face_mask_model4.keras"
+try:
+    model = load_model(MODEL_PATH)
+except:
+    model = None
+
+# FACE DETECTOR (Legacy)
 face_detector = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
