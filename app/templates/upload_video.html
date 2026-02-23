@@ -1,77 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face Mask Detection - Video Upload</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/video.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎬 Face Mask Detection — Video Upload</h1>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Face Mask Detection - Video Upload</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/video.css') }}">
-</head>
-
-<body>
-
-  <div class="container">
-    <h1>🎬 Face Mask Detection - Video Upload</h1>
-
-    <!-- Upload -->
-    <div class="upload-container active" id="uploadContainer">
-      <h2>📤 Upload Video for Detection</h2>
-
-      <form method="post" enctype="multipart/form-data" id="uploadForm">
+      <!-- Upload -->
+      <div class="upload-container active" id="uploadContainer">
+        <h2>📤 Upload Video for Detection</h2>
         <div class="form-input">
-          <input type="file" name="file" accept="video/*" id="fileInput" required>
-          <label for="fileInput" class="file-input-label">
-            🎥 <span id="fileLabel">Choose Video File</span>
-          </label>
+          <input type="file" name="file" accept="video/*" id="fileInput" required />
+          <label for="fileInput" class="file-input-label" id="dropLabel">🎥 <span id="fileLabel">Choose Video File</span></label>
         </div>
-
-        <button type="submit" class="btn btn-lg" id="submitBtn">
-          🚀 Detect Masks
-        </button>
-      </form>
-    </div>
-
-    <!-- Loading -->
-    <div class="loading-container" id="loadingContainer">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Processing Video...</div>
-      <div class="loading-subtext">
-        Your video is being processed with mask detection. Please wait...
-      </div>
-      <div class="loading-line">
-        <div class="loading-bar"></div>
-      </div>
-    </div>
-
-    <!-- Success -->
-    <div class="success-container" id="successContainer">
-      <div class="success-message">
-        ✅ Video processed successfully!
+        <button type="button" class="btn btn-lg" id="submitBtn">🚀 Detect Masks</button>
       </div>
 
-      <a href="#" class="download-btn" id="downloadBtn" download>
-        📥 Download Processed Video
-      </a>
-
-      <a href="/" class="back-link">← Back to Home</a>
-    </div>
-
-    <!-- Error -->
-    <div class="error-container" id="errorContainer">
-      <div class="error-message" id="errorMessage">
-        ❌ Error processing video
+      <!-- Loading -->
+      <div class="loading-container" id="loadingContainer">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Processing Video...</div>
+        <div class="loading-subtext">Your video is being processed with mask detection. Please wait…</div>
+        <div class="loading-line">
+          <div class="loading-bar"></div>
+        </div>
       </div>
 
-      <a href="/" class="back-link">← Back to Home</a>
+      <!-- Success -->
+      <div class="success-container" id="successContainer">
+        <div class="success-message">✅ Video processed successfully!</div>
+        <a href="#" class="download-btn" id="downloadBtn" download>📥 Download Processed Video</a>
+        <a href="/" class="back-link">← Back to Home</a>
+      </div>
+
+      <!-- Error -->
+      <div class="error-container" id="errorContainer">
+        <div class="error-message" id="errorMessage">❌ Error processing video</div>
+        <a href="/" class="back-link">← Back to Home</a>
+      </div>
     </div>
-  </div>
 
-  <script>
-    const PROCESSING = {{ 'true' if processing else 'false' }};
-    const VIDEO_ID = "{{ video_id if video_id else '' }}";
-  </script>
-
-  <script src="{{ url_for('static', filename='js/video.js') }}"></script>
-</body>
-
+    <script src="{{ url_for('static', filename='js/video.js') }}"></script>
+  </body>
 </html>

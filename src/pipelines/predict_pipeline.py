@@ -12,6 +12,12 @@ from src.logger.logger import logging
 from src.components.face_crop import FaceCropper
 
 
+# CPU Optimization: Disable GPU and limit threading for CPU efficiency
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Force CPU-only mode
+tf.config.threading.set_inter_op_parallelism_threads(2)
+tf.config.threading.set_intra_op_parallelism_threads(4)
+logging.info("CPU-optimized inference mode enabled")
+
 class PredictPipeline:
     def __init__(self):
         try:
