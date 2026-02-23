@@ -1,552 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
     <title>Face Mask Detection</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
-      }
-      
-      .container {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        max-width: 900px;
-        width: 100%;
-        padding: 40px;
-      }
-      
-      h1 {
-        color: #333;
-        margin-bottom: 30px;
-        text-align: center;
-        font-size: 2em;
-      }
-      
-      .upload-section {
-        background: #f8f9fa;
-        border: 2px dashed #667eea;
-        border-radius: 10px;
-        padding: 30px;
-        text-align: center;
-        margin-bottom: 30px;
-      }
-      
-      .upload-section input[type='file'] {
-        padding: 10px;
-        margin-bottom: 15px;
-        cursor: pointer;
-      }
-      
-      .upload-section button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 12px 30px;
-        border: none;
-        border-radius: 8px;
-        font-size: 1em;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      
-      .upload-section button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-      }
-      
-      .error {
-        background: #fee;
-        color: #c33;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border-left: 4px solid #c33;
-      }
-      
-      .result-section {
-        display: none;
-      }
-      
-      .result-section.show {
-        display: block;
-        animation: slideIn 0.5s ease;
-      }
-      
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      
-      .summary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 30px;
-        text-align: center;
-        font-size: 1.2em;
-        font-weight: bold;
-      }
-      
-      .image-container {
-        text-align: center;
-        margin-bottom: 30px;
-      }
-      
-      .image-container img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 10px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        border: 3px solid #667eea;
-      }
-      
-      .detections {
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-      }
-      
-      .detections h2 {
-        color: #333;
-        margin-bottom: 20px;
-        font-size: 1.3em;
-      }
-      
-      .detection-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 15px;
-      }
-      
-      .detection-item {
-        background: white;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 4px solid;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      
-      .detection-item:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-      }
-      
-      .detection-item.mask {
-        border-left-color: #28a745;
-        background: #f0fdf4;
-      }
-      
-      .detection-item.no-mask {
-        border-left-color: #dc3545;
-        background: #fef2f2;
-      }
-      
-      .detection-label {
-        font-weight: bold;
-        font-size: 1.1em;
-        margin-bottom: 8px;
-      }
-      
-      .detection-item.mask .detection-label {
-        color: #28a745;
-      }
-      
-      .detection-item.no-mask .detection-label {
-        color: #dc3545;
-      }
-      
-      .detection-confidence {
-        color: #666;
-        font-size: 0.95em;
-      }
-      
-      .back-link {
-        display: inline-block;
-        margin-top: 20px;
-        padding: 10px 20px;
-        background: #667eea;
-        color: white;
-        text-decoration: none;
-        border-radius: 8px;
-        transition: background 0.2s;
-      }
-      
-      .back-link:hover {
-        background: #764ba2;
-      }
-      
-      @media (max-width: 600px) {
-        .container {
-          padding: 20px;
-        }
-      
-        h1 {
-          font-size: 1.5em;
-        }
-      
-        .detection-list {
-          grid-template-columns: 1fr;
-        }
-      }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-      .tabs {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 30px;
-        border-bottom: 2px solid #f0f0f0;
-      }
+    <!-- External CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/upload_photo.css') }}">
+</head>
+<body>
 
-      .tab-btn {
-        padding: 12px 20px;
-        background: none;
-        border: none;
-        color: #666;
-        font-size: 1em;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-        transition: all 0.3s ease;
-      }
+<div class="container">
+    <h1>📸 Mask Detection</h1>
 
-      .tab-btn.active {
-        color: #667eea;
-        border-bottom-color: #667eea;
-        font-weight: bold;
-      }
-
-      .tab-btn:hover {
-        color: #667eea;
-      }
-
-      .tab-content {
-        display: none;
-      }
-
-      .tab-content.active {
-        display: block;
-      }
-
-      #camera-container {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-
-      #camera-video {
-        width: 100%;
-        max-width: 500px;
-        border-radius: 10px;
-        background: #000;
-        margin-bottom: 15px;
-      }
-
-      #canvas {
-        display: none;
-      }
-
-      .camera-buttons {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-
-      .camera-buttons button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 0.95em;
-      }
-
-      .camera-buttons button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-      }
-
-      .camera-buttons button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .camera-buttons button.secondary {
-        background: #6c757d;
-      }
-
-      .camera-buttons button.success {
-        background: #28a745;
-      }
-
-      .camera-info {
-        background: #e7f3ff;
-        border-left: 4px solid #2196F3;
-        padding: 12px;
-        border-radius: 4px;
-        margin-bottom: 15px;
-        text-align: left;
-        color: #333;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>🔍 Face Mask Detection</h1>
-
-      <!-- Tabs for switching between upload and capture -->
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('upload')">📤 Upload Photo</button>
-        <button class="tab-btn" onclick="switchTab('capture')">📷 Capture Photo</button>
-      </div>
-
-      <!-- Upload Photo Tab -->
-      <div id="upload-tab" class="tab-content active">
-        <div class="upload-section">
-          <h2>Upload Image for Detection</h2>
-          <form method="post" enctype="multipart/form-data">
-            <input type="file" name="file" accept="image/*" required />
-            <button type="submit">🚀 Detect Masks</button>
-          </form>
-        </div>
-      </div>
-
-      <!-- Capture Photo Tab -->
-      <div id="capture-tab" class="tab-content">
-        <div class="upload-section">
-          <h2>Capture Photo with Camera</h2>
-          <div class="camera-info">
-            ℹ️ Click "Start Camera" to allow camera access, then capture your photo
-          </div>
-          <div id="camera-container">
-            <video id="camera-video" width="500" height="400" autoplay playsinline muted></video>
-            <canvas id="canvas" width="500" height="400"></canvas>
-          </div>
-          <div class="camera-buttons">
-            <button id="start-camera-btn" onclick="startCamera()">▶️ Start Camera</button>
-            <button id="capture-btn" onclick="capturePhoto()" disabled>📸 Capture Photo</button>
-            <button id="retake-btn" class="secondary" onclick="retakePhoto()" style="display: none;">🔄 Retake</button>
-            <button id="upload-captured-btn" class="success" onclick="submitCapturedPhoto()" style="display: none;">✅ Detect Masks</button>
-            <button id="stop-camera-btn" class="secondary" onclick="stopCamera()" style="display: none;">⏹️ Stop Camera</button>
-          </div>
-        </div>
-      </div>
-
-      {% if error %}
-        <div class="error">
-          <strong>❌ Error:</strong> {{ error }}
-        </div>
-      {% endif %}
-
-      {% if image_path %}
-        <div class="result-section show">
-          <div class="summary">{{ detection }}</div>
-
-          <div class="image-container">
-            <img src="{{ image_path }}" alt="Detection Result" />
-          </div>
-
-          {% if detections %}
-            <div class="detections">
-              <h2>📊 Detection Details</h2>
-              <div class="detection-list">
-                {% for detection in detections %}
-                  <div class="detection-item {% if detection.label == 'Mask' %}mask{% else %}no-mask{% endif %}">
-                    <div class="detection-label">
-                      {% if detection.label == 'Mask' %}
-                        ✅ {{ detection.label }}
-                      {% else %}
-                        ⚠️ {{ detection.label }}
-                      {% endif %}
-                    </div>
-                    <div class="detection-confidence">
-                      Face #{{ detection.face_num }}<br />
-                      Confidence: {{ detection.confidence }}
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          {% endif %}
-        </div>
-      {% endif %}
-
-      <a href="/" class="back-link">👈 Back to Home</a>
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="upload">📤 Upload Photo</button>
+        <button class="tab-btn" data-tab="capture">📷 Capture Photo</button>
     </div>
 
-    <!-- Hidden file input for captured photo -->
-    <input type="file" id="captured-file-input" style="display: none;" />
+    <!-- Upload Tab -->
+    <div id="upload-tab" class="tab-content active">
+        <div class="upload-section">
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+                <input type="file" name="file" accept="image/*" required id="fileInput" hidden>
 
-    <script>
-      let stream = null;
-      let capturedCanvas = null;
+                <button type="button" class="btn btn-secondary" id="selectBtn">
+                    📁 Select Image
+                </button>
 
-      function switchTab(tabName) {
-        // Hide all tabs
-        document.querySelectorAll('.tab-content').forEach(tab => {
-          tab.classList.remove('active');
-        });
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-          btn.classList.remove('active');
-        });
+                <p id="fileLabel">No file chosen</p>
 
-        // Show selected tab
-        document.getElementById(tabName + '-tab').classList.add('active');
-        event.target.classList.add('active');
+                <button type="submit" class="btn btn-success" id="uploadSubmit">
+                    🚀 Start Detection
+                </button>
+            </form>
+        </div>
+    </div>
 
-        // Stop camera if switching away from capture
-        if (tabName !== 'capture') {
-          stopCamera();
-        }
-      }
+    <!-- Capture Tab -->
+    <div id="capture-tab" class="tab-content">
+        <div class="upload-section">
+            <video id="cameraVideo" autoplay playsinline muted class="camera-video"></video>
+            <div id="previewContainer"></div>
+            <canvas id="canvas" hidden></canvas>
 
-      async function startCamera() {
-        try {
-          const video = document.getElementById('camera-video');
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 500 },
-              height: { ideal: 400 },
-              facingMode: 'user'
-            },
-            audio: false
-          });
+            <div class="camera-buttons">
+                <button id="startCameraBtn" class="btn">▶️ Start Camera</button>
+                <button id="captureBtn" class="btn btn-success" disabled>📸 Capture</button>
+                <button id="retakeBtn" class="btn btn-secondary hidden">🔄 Retake</button>
+                <button id="analyzeBtn" class="btn btn-success hidden">✅ Analyze Mask</button>
+            </div>
+        </div>
+    </div>
 
-          video.srcObject = stream;
-          
-          // Ensure video plays
-          video.onloadedmetadata = function() {
-            video.play().catch(err => {
-              console.error('Error playing video:', err);
-            });
-          };
+    {% if image_path %}
+    <div class="result-section">
+        <div class="summary">{{ detection }}</div>
 
-          video.style.display = 'block';
+        <img src="{{ image_path }}" class="result-image">
 
-          document.getElementById('start-camera-btn').disabled = true;
-          document.getElementById('capture-btn').disabled = false;
-          document.getElementById('stop-camera-btn').style.display = 'inline-block';
-        } catch (err) {
-          alert('❌ Cannot access camera: ' + err.message + '\n\nMake sure you:\n1. Have granted camera permission\n2. Have a working camera attached\n3. Are using HTTPS or localhost');
-          console.error('Error accessing camera:', err);
-        }
-      }
+        <div class="detection-list">
+            {% for d in detections %}
+            <div class="detection-item {{ 'mask' if d.label == 'Mask' else 'no-mask' }}">
+                <strong>{{ d.label }}</strong><br>
+                Face : {{ d.face_num }}<br>
+                Confidence: {{ d.confidence }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
 
-      function capturePhoto() {
-        const video = document.getElementById('camera-video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+<!-- External JS -->
+<script src="{{ url_for('static', filename='js/upload_photo.js') }}"></script>
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-
-        capturedCanvas = canvas;
-
-        // Hide video and show retake/upload buttons
-        video.style.display = 'none';
-        document.getElementById('capture-btn').style.display = 'none';
-        document.getElementById('start-camera-btn').style.display = 'none';
-        document.getElementById('stop-camera-btn').style.display = 'none';
-        document.getElementById('retake-btn').style.display = 'inline-block';
-        document.getElementById('upload-captured-btn').style.display = 'inline-block';
-
-        // Display captured image on canvas
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width;
-        tempCanvas.height = canvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(canvas, 0, 0);
-
-        // Show canvas as image preview
-        const img = document.createElement('img');
-        img.src = canvas.toDataURL('image/jpeg');
-        img.style.maxWidth = '100%';
-        img.style.borderRadius = '10px';
-        img.style.marginBottom = '15px';
-        img.id = 'preview-image';
-
-        const container = document.getElementById('camera-container');
-        const oldPreview = document.getElementById('preview-image');
-        if (oldPreview) oldPreview.remove();
-        container.insertBefore(img, document.getElementById('canvas'));
-      }
-
-      function retakePhoto() {
-        const video = document.getElementById('camera-video');
-        const preview = document.getElementById('preview-image');
-        if (preview) preview.remove();
-
-        video.style.display = 'block';
-        document.getElementById('capture-btn').style.display = 'inline-block';
-        document.getElementById('start-camera-btn').style.display = 'none';
-        document.getElementById('stop-camera-btn').style.display = 'inline-block';
-        document.getElementById('retake-btn').style.display = 'none';
-        document.getElementById('upload-captured-btn').style.display = 'none';
-        document.getElementById('capture-btn').disabled = false;
-      }
-
-      function stopCamera() {
-        const video = document.getElementById('camera-video');
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-          stream = null;
-        }
-        video.style.display = 'none';
-        document.getElementById('start-camera-btn').disabled = false;
-        document.getElementById('capture-btn').disabled = true;
-        document.getElementById('stop-camera-btn').style.display = 'none';
-      }
-
-      function submitCapturedPhoto() {
-        if (!capturedCanvas) {
-          alert('❌ No photo captured!');
-          return;
-        }
-
-        // Convert canvas to blob and create form data
-        capturedCanvas.toBlob(function(blob) {
-          const formData = new FormData();
-          formData.append('file', blob, 'captured_photo.jpg');
-
-          // Send to server
-          fetch('{{ request.path }}', {
-            method: 'POST',
-            body: formData
-          })
-          .then(response => response.text())
-          .then(html => {
-            document.open();
-            document.write(html);
-            document.close();
-          })
-          .catch(err => {
-            alert('❌ Error uploading photo: ' + err.message);
-            console.error('Upload error:', err);
-          });
-        }, 'image/jpeg', 0.95);
-      }
-    </script>
-  </body>
+</body>
 </html>
