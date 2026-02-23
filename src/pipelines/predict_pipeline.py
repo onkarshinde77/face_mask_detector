@@ -23,19 +23,8 @@ logging.info("CPU-optimized inference mode enabled")
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║                      NUMPY-TO-JSON CONVERTER                            ║
+# ║                      DRAWING HELPERS                                    ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
-
-def _to_json_serializable(val):
-    """Convert numpy types to native Python types for JSON serialization."""
-    if isinstance(val, (np.integer, np.int64, np.int32)):
-        return int(val)
-    elif isinstance(val, (np.floating, np.float32, np.float64)):
-        return float(val)
-    elif isinstance(val, np.ndarray):
-        return val.tolist()
-    return val
-
 
 def _draw_detection(frame: np.ndarray, coords: tuple,
                     label: str, confidence: float) -> np.ndarray:
@@ -52,6 +41,7 @@ def _draw_detection(frame: np.ndarray, coords: tuple,
     # Label text
     text = f"{label}: {confidence * 100:.1f}%"
     (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+
     # Filled background rectangle for text
     cv2.rectangle(
         frame,
@@ -72,6 +62,11 @@ def _draw_detection(frame: np.ndarray, coords: tuple,
 
 
 def _parse_prediction(pred: np.ndarray) -> tuple[str, float]:
+    """
+    Normalise model output regardless of whether the model outputs
+    a single sigmoid score or a 2-class softmax vector.
+    Returns (label, confidence_0_to_1).
+    """
     if pred.shape[0] == 1:
         score = float(pred[0])
         label = "No Mask" if score > 0.5 else "Mask"
@@ -82,7 +77,30 @@ def _parse_prediction(pred: np.ndarray) -> tuple[str, float]:
         conf  = float(pred[idx])
     return label, conf
 
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║                    PREDICTION PIPELINE (SINGLETON)                      ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
 class PredictPipeline:
+    """
+    Thread-safe, singleton-like pipeline.
+
+    Usage
+    -----
+        pipeline = PredictPipeline()        # load once at startup
+
+        # Single image path
+        result = pipeline.predict_image(image_path)
+
+        # Raw BGR numpy frame (from webcam / video)
+        annotated, detections = pipeline.predict_frame(frame)
+
+        # Generator for video files (server-side, headless)
+        for ann_frame, dets in pipeline.predict_video_frames(video_path):
+            ...
+    """
+
     _instance_lock = threading.Lock()
 
     def __init__(self):
@@ -140,6 +158,14 @@ class PredictPipeline:
         self,
         frame: np.ndarray,
     ) -> tuple[np.ndarray, list[dict]]:
+        """
+        Run face detection + mask prediction on one BGR frame.
+
+        Returns
+        -------
+        annotated_frame : np.ndarray   BGR frame with boxes/labels drawn
+        detections      : list[dict]   [{label, face_num, confidence, coords}]
+        """
         try:
             faces = self.face_cropper.detect_faces(frame)
             annotated  = frame.copy()
@@ -157,14 +183,11 @@ class PredictPipeline:
                 coords = cropped[idx]["coords"]          # (startX, startY, endX, endY)
                 _draw_detection(annotated, coords, label, conf)
 
-                # Convert numpy int64 to Python int for JSON serialization
-                coords_serializable = [int(c) for c in coords]
-
                 detections.append({
                     "face_num"  : idx + 1,
                     "label"     : label,
                     "confidence": f"{conf * 100:.1f}%",
-                    "coords"    : coords_serializable,
+                    "coords"    : coords,
                 })
 
             return annotated, detections
