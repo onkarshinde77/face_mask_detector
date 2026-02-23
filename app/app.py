@@ -9,28 +9,10 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from src.pipelines.predict_pipeline import PredictPipeline
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MODEL_PATH = "artifact/models/face_mask_model2.h5"
+model = load_model(MODEL_PATH)
 
-# Import the new predict pipeline
-
-# Initialize the prediction pipeline
-try:
-    predict_pipeline = PredictPipeline()
-    print("✓ PredictPipeline initialized successfully")
-except Exception as e:
-    print(f"⚠ Warning: PredictPipeline initialization failed: {str(e)}")
-    print("Falling back to legacy prediction method")
-    predict_pipeline = None
-
-# Legacy model for fallback
-# MODEL_PATH = "artifact/models/face_mask_model4.keras"
-# try:
-#     model = load_model(MODEL_PATH)
-# except:
-#     model = None
-
-# FACE DETECTOR (Legacy)
+# FACE DETECTOR
 face_detector = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
@@ -135,67 +117,7 @@ def generate_frames():
         if not success:
             break
 
-        # Use new pipeline if available, otherwise use legacy method
-        if predict_pipeline:
-            faces = predict_pipeline.face_cropper.detect_faces(frame)
-            
-            if len(faces) > 0:
-                cropped_faces = predict_pipeline.face_cropper.crop_faces(frame, faces)
-                faces_list = []
-                
-                for cropped_face_dict in cropped_faces:
-                    face = cropped_face_dict['face']
-                    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                    face_resized = cv2.resize(face_rgb, (224, 224))
-                    face_array = np.asarray(face_resized, dtype="float32")
-                    face_array = preprocess_input(face_array)
-                    faces_list.append(face_array)
-                
-                if faces_list:
-                    faces_array = np.array(faces_list, dtype="float32")
-                    predictions = predict_pipeline.model.predict(faces_array, verbose=0)
-                    
-                    for idx, pred in enumerate(predictions):
-                        startX, startY, endX, endY = cropped_faces[idx]['coords']
-                        
-                        if len(pred) == 1:
-                            score = float(pred[0])
-                            label = "No Mask" if score > 0.5 else "Mask"
-                            confidence = score if score > 0.5 else 1 - score
-                        else:
-                            label_idx = np.argmax(pred)
-                            confidence = float(pred[label_idx])
-                            label = "No Mask" if label_idx == 1 else "Mask"
-                        
-                        color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
-                        
-                        cv2.rectangle(frame, (startX, startY), (endX, endY), color, 3)
-                        
-                        label_text = f"{label}: {confidence*100:.1f}%"
-                        (text_width, text_height), _ = cv2.getTextSize(
-                            label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
-                        )
-                        
-                        cv2.rectangle(
-                            frame,
-                            (startX, startY - text_height - 12),
-                            (startX + text_width + 8, startY),
-                            color,
-                            -1
-                        )
-                        
-                        cv2.putText(
-                            frame,
-                            label_text,
-                            (startX + 4, startY - 4),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6,
-                            (255, 255, 255),
-                            2
-                        )
-        else:
-            # Legacy method
-            frame, _ = predict_mask(frame)
+        frame, _ = predict_mask(frame)
 
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
@@ -205,39 +127,29 @@ def generate_frames():
     camera.release()
 
 def process_and_save_video(input_path, output_path):
-    """Process video using new PredictPipeline or legacy method"""
-    
-    if predict_pipeline:
-        # Use new PredictPipeline for video processing
-        predict_pipeline.predict_video(
-            video_path=input_path,
-            save_output=True,
-            output_path=output_path
-        )
-    else:
-        # Fallback to legacy method
-        cap = cv2.VideoCapture(input_path)
 
-        if not cap.isOpened():
-            raise Exception("Cannot open video file")
+    cap = cv2.VideoCapture(input_path)
 
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    if not cap.isOpened():
+        raise Exception("Cannot open video file")
 
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        while cap.isOpened():
-            success, frame = cap.read()
-            if not success:
-                break
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-            frame, _ = predict_mask(frame)
-            out.write(frame)
+    while cap.isOpened():
+        success, frame = cap.read()
+        if not success:
+            break
 
-        cap.release()
-        out.release()
+        frame, _ = predict_mask(frame)
+        out.write(frame)
+
+    cap.release()
+    out.release()
 
 
 @app.route('/')
@@ -268,77 +180,29 @@ def upload_photo():
         if file.filename == '':
             return redirect(request.url)
 
-        # Save uploaded file
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filepath)
 
-        try:
-            if predict_pipeline:
-                # Use new PredictPipeline with Caffe DNN face detection
-                result = predict_pipeline.predict_image(filepath)
-                
-                output_image = result['image']
-                detections = result['detections']
-                num_faces = result['num_faces']
-                
-                # Save processed image
-                processed_filename = "processed_" + file.filename
-                processed_path = os.path.join(app.config['UPLOAD_FOLDER'], processed_filename)
-                cv2.imwrite(processed_path, output_image)
-                
-                relative_path = url_for('static', filename=f'uploads/{processed_filename}')
-                
-                # Format detection information for display
-                detection_info = []
-                mask_count = 0
-                no_mask_count = 0
-                
-                for i, det in enumerate(detections, 1):
-                    label = det['label']
-                    confidence = det['confidence'] * 100
-                    detection_info.append({
-                        'face_num': i,
-                        'label': label,
-                        'confidence': f"{confidence:.1f}%"
-                    })
-                    
-                    if label == 'Mask':
-                        mask_count += 1
-                    else:
-                        no_mask_count += 1
-                
-                summary = f"{num_faces} face(s) detected | Mask: {mask_count} | No Mask: {no_mask_count}"
-                
-                return render_template('upload_photo.html',
-                                     image_path=relative_path,
-                                     detection=summary,
-                                     detections=detection_info,
-                                     num_faces=num_faces)
+        img = cv2.imread(filepath)
+
+        if img is not None:
+            img, pred = predict_mask(img)
+
+            processed_filename = "processed_" + file.filename
+            processed_path = os.path.join(app.config['UPLOAD_FOLDER'], processed_filename)
+
+            cv2.imwrite(processed_path, img)
+
+            relative_path = url_for('static', filename=f'uploads/{processed_filename}')
+
+            if pred == 0:
+                flag = "Mask"
             else:
-                # Fallback to legacy prediction method
-                img = cv2.imread(filepath)
-                if img is not None:
-                    img, pred = predict_mask(img)
-                    
-                    processed_filename = "processed_" + file.filename
-                    processed_path = os.path.join(app.config['UPLOAD_FOLDER'], processed_filename)
-                    
-                    cv2.imwrite(processed_path, img)
-                    
-                    relative_path = url_for('static', filename=f'uploads/{processed_filename}')
-                    
-                    if pred == 0:
-                        flag = "Mask"
-                    else:
-                        flag = "No Mask"
-                    
-                    return render_template('upload_photo.html',
-                                         image_path=relative_path,
-                                         detection=flag)
-        
-        except Exception as e:
-            print(f"Error during prediction: {str(e)}")
-            return render_template('upload_photo.html', error=f"Error: {str(e)}")
+                flag = "No Mask"
+
+            return render_template('upload_photo.html',
+                                   image_path=relative_path,
+                                   detection=flag)
 
     return render_template('upload_photo.html')
 

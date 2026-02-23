@@ -6,102 +6,77 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.vgg16 import preprocess_input
-from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE, MODEL_NAME
+from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE , MODEL_NAME
 from src.exception.exception import CustomException
 from src.logger.logger import logging
-from src.components.face_crop import FaceCropper
-
 
 class PredictPipeline:
     def __init__(self):
         try:
             self.model_path = os.path.join(ARTIFACT_DIR, MODEL_DIR, MODEL_NAME)
             if not os.path.exists(self.model_path):
-                raise FileNotFoundError(f"Model not found at {self.model_path}")
+                 raise FileNotFoundError(f"Model not found at {self.model_path}")
             
             self.model = load_model(self.model_path)
+            # Check model output shape
             self.output_shape = self.model.output_shape
             
-            # Initialize Face Cropper using Caffe DNN model
-            self.face_cropper = FaceCropper()
-            
-            # Load face cascade as backup
+            # Load face cascade
             cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-            self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            if not os.path.exists(cascade_path):
+                logging.warning(f"Cascade file not found at {cascade_path}, using default path if available in cv2")
             
-            logging.info(f"PredictPipeline initialized successfully with model: {self.model_path}")
-        
+            self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            logging.info(f"Model loaded from {self.model_path}")
         except Exception as e:
             logging.error(f"Error initializing PredictPipeline: {str(e)}")
             raise CustomException(e, sys)
-    
-    def predict_image(self, image_path):
-        """
-        Complete prediction pipeline for image:
-        1. Load image
-        2. Detect faces
-        3. Crop faces
-        4. Predict mask on each face
-        5. Draw bounding boxes with colors and labels
         
-        Args:
-            image_path: Path to the image file
-            
-        Returns:
-            dict: {
-                'image': Output image with bounding boxes and labels,
-                'detections': List of detections [(coords, label, confidence), ...],
-                'num_faces': Total number of faces detected
-            }
-        """
+    def predict(self, frame):
         try:
-            # Load image
-            image = cv2.imread(image_path)
-            if image is None:
-                raise FileNotFoundError(f"Image not found at {image_path}")
-            
-            logging.info(f"Processing image: {image_path}")
-            
-            # Detect faces using Caffe DNN model
-            faces = self.face_cropper.detect_faces(image)
-            
+            # 🔹 Resize frame for faster detection (important)
+            small_frame = cv2.resize(frame, (640, 480))
+            gray = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY)
+
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(60, 60)
+            )
+
             if len(faces) == 0:
-                logging.warning("No faces detected in the image")
-                return {
-                    'image': image,
-                    'detections': [],
-                    'num_faces': 0
-                }
-            
-            # Crop faces
-            cropped_faces = self.face_cropper.crop_faces(image, faces)
-            
-            # Prepare faces for prediction
+                return small_frame
+
             faces_list = []
-            detections = []
-            
-            for cropped_face_dict in cropped_faces:
-                face = cropped_face_dict['face']
-                startX, startY, endX, endY = cropped_face_dict['coords']
-                
-                # Preprocess face for mask detection model
-                face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                face_resized = cv2.resize(face_rgb, (IMG_SIZE, IMG_SIZE))
-                face_array = np.asarray(face_resized, dtype="float32")
-                face_array = preprocess_input(face_array)
-                faces_list.append(face_array)
-            
-            # Batch prediction on all faces
+            faces_rects = []
+
+            for (x, y, w, h) in faces:
+                face = small_frame[y:y+h, x:x+w]
+
+                # Convert BGR → RGB
+                face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+
+                # Resize once
+                face = cv2.resize(face, (IMG_SIZE, IMG_SIZE))
+
+                # Convert to array and preprocess
+                face = np.asarray(face, dtype="float32")
+                face = preprocess_input(face)
+
+                faces_list.append(face)
+                faces_rects.append((x, y, w, h))
+
             faces_array = np.array(faces_list, dtype="float32")
-            predictions = self.model.predict(faces_array, verbose=0)
-            
-            # Draw bounding boxes and labels on image
-            output_image = image.copy()
-            
-            for idx, pred in enumerate(predictions):
-                startX, startY, endX, endY = cropped_faces[idx]['coords']
-                
-                # Determine label and confidence
+
+            # 🔹 Use batch_size = len(faces) (faster)
+            preds = self.model.predict(faces_array, batch_size=len(faces_array), verbose=0)
+
+            for i, (x, y, w, h) in enumerate(faces_rects):
+
+                pred = preds[i]
+
+                # 🔹 Binary Classification (Most Common)
                 if len(pred) == 1:
                     score = float(pred[0])
                     label = "No Mask" if score > 0.5 else "Mask"
@@ -110,210 +85,96 @@ class PredictPipeline:
                     label_idx = np.argmax(pred)
                     confidence = float(pred[label_idx])
                     label = "No Mask" if label_idx == 1 else "Mask"
-                
-                # Color: Green (0, 255, 0) for Mask, Red (0, 0, 255) for No Mask
+
+                # 🔹 Better Color Control
+                if label == "Mask":
+                    color = (0, 255, 0)
+                elif label == 'No Mask':
+                    color = (0, 0, 255)
+                text = f"{label}: {confidence*100:.1f}%"
+                # Draw rectangle
+                cv2.rectangle(small_frame, (x, y), (x+w, y+h), color, 2)
+                # Draw filled label background
+                (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+                cv2.rectangle(small_frame, (x, y - th - 10), (x + tw, y), color, -1)
+                cv2.putText(small_frame,text,(x, y - 5),cv2.FONT_HERSHEY_SIMPLEX,0.6,(255, 255, 255),2)
+            return small_frame
+
+        except Exception as e:
+            logging.error(f"Prediction Error: {str(e)}")
+            return frame
+    def predict_main(self, frame):
+        try:
+            # Detect faces in grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+            
+            faces_list = []
+            faces_rects = []
+
+            for (x, y, w, h) in faces:
+                # Preprocess face for model (resize to 224x224, RGB)
+                face_img = frame[y:y+h, x:x+w]
+                # Convert BGR to RGB for model
+                face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+                face_img = cv2.resize(face_img, (IMG_SIZE, IMG_SIZE))
+                face_img = img_to_array(face_img)
+                face_img = preprocess_input(face_img) # VGG16 preprocess expects RGB
+                faces_list.append(face_img)
+                faces_rects.append((x, y, w, h))
+            
+            if len(faces_list) > 0:
+                faces_array = np.array(faces_list, dtype="float32")
+                preds = self.model.predict(faces_array, batch_size=32)
+            else:
+                return frame # No faces detected
+
+            for (i, (x, y, w, h)) in enumerate(faces_rects):
+                pred = preds[i]
+                # Logic for class determination
+                # Assuming 0: "Mask" (with_mask), 1: "No Mask" (without_mask)
+                if pred.shape[0] == 1 or (len(pred.shape) == 0):
+                     # Binary case
+                     score = pred[0] if len(pred) > 0 else pred
+                     label = "No Mask" if score > 0.5 else "Mask"
+                     confidence = score if score > 0.5 else 1 - score
+                else:
+                    label_idx = np.argmax(pred)
+                    label = "No Mask" if label_idx == 1 else "Mask"
+                    confidence = pred[label_idx]
+
+                # Color: Green for Mask, Red for No Mask
                 color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
                 
-                # Draw rectangle
-                cv2.rectangle(output_image, (startX, startY), (endX, endY), color, 3)
+                label_text = "{}: {:.2f}%".format(label, confidence * 100)
                 
-                # Prepare label text
-                label_text = f"{label}: {confidence*100:.1f}%"
-                
-                # Draw filled label background
-                (text_width, text_height), _ = cv2.getTextSize(
-                    label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2
-                )
-                
-                cv2.rectangle(
-                    output_image,
-                    (startX, startY - text_height - 15),
-                    (startX + text_width + 10, startY),
-                    color,
-                    -1
-                )
-                
-                # Put text on image
-                cv2.putText(
-                    output_image,
-                    label_text,
-                    (startX + 5, startY - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (255, 255, 255),
-                    2
-                )
-                
-                # Store detection info
-                detections.append({
-                    'coords': (startX, startY, endX, endY),
-                    'label': label,
-                    'confidence': confidence
-                })
+                cv2.putText(frame, label_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2)
+                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
             
-            logging.info(f"Detected {len(detections)} face(s) - Processing complete")
-            
-            return {
-                'image': output_image,
-                'detections': detections,
-                'num_faces': len(detections)
-            }
-        
+            return frame
         except Exception as e:
-            logging.error(f"Error in predict_image: {str(e)}")
-            raise CustomException(e, sys)
-    
-    def predict_video(self, video_path=None, save_output=False, output_path=None):
-        """
-        Complete prediction pipeline for video:
-        1. Read video frames
-        2. Detect faces in each frame
-        3. Predict mask on each face
-        4. Draw bounding boxes with colors and labels
+            logging.error(f"Error in prediction: {str(e)}")
+            return frame
         
-        Args:
-            video_path: Path to video file (None for webcam)
-            save_output: Whether to save output video
-            output_path: Path to save output video
-            
-        Returns:
-            dict: {
-                'status': 'completed',
-                'frames_processed': Total frames processed,
-                'output_path': Path to saved video (if save_output=True)
-            }
-        """
-        try:
-            # Open video source
-            if video_path is None:
-                cap = cv2.VideoCapture(0)  # Webcam
-                logging.info("Using webcam as video source")
-            else:
-                cap = cv2.VideoCapture(video_path)
-                logging.info(f"Reading video from: {video_path}")
-            
-            if not cap.isOpened():
-                raise ValueError("Cannot open video source")
-            
-            # Video properties
-            frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = int(cap.get(cv2.CAP_PROP_FPS))
-            
-            # Video writer for output
-            out = None
-            if save_output and output_path:
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
-            
-            frame_count = 0
-            
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                
-                frame_count += 1
-                
-                # Detect faces
-                faces = self.face_cropper.detect_faces(frame)
-                
-                if len(faces) > 0:
-                    # Crop and predict
-                    cropped_faces = self.face_cropper.crop_faces(frame, faces)
-                    faces_list = []
-                    
-                    for cropped_face_dict in cropped_faces:
-                        face = cropped_face_dict['face']
-                        face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-                        face_resized = cv2.resize(face_rgb, (IMG_SIZE, IMG_SIZE))
-                        face_array = np.asarray(face_resized, dtype="float32")
-                        face_array = preprocess_input(face_array)
-                        faces_list.append(face_array)
-                    
-                    # Batch prediction
-                    faces_array = np.array(faces_list, dtype="float32")
-                    predictions = self.model.predict(faces_array, verbose=0)
-                    
-                    # Draw detections
-                    for idx, pred in enumerate(predictions):
-                        startX, startY, endX, endY = cropped_faces[idx]['coords']
-                        
-                        # Determine label and confidence
-                        if len(pred) == 1:
-                            score = float(pred[0])
-                            label = "No Mask" if score > 0.5 else "Mask"
-                            confidence = score if score > 0.5 else 1 - score
-                        else:
-                            label_idx = np.argmax(pred)
-                            confidence = float(pred[label_idx])
-                            label = "No Mask" if label_idx == 1 else "Mask"
-                        
-                        # Color: Green for Mask, Red for No Mask
-                        color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
-                        
-                        # Draw rectangle
-                        cv2.rectangle(frame, (startX, startY), (endX, endY), color, 3)
-                        
-                        # Prepare label text
-                        label_text = f"{label}: {confidence*100:.1f}%"
-                        
-                        # Draw filled label background
-                        (text_width, text_height), _ = cv2.getTextSize(
-                            label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
-                        )
-                        
-                        cv2.rectangle(
-                            frame,
-                            (startX, startY - text_height - 12),
-                            (startX + text_width + 8, startY),
-                            color,
-                            -1
-                        )
-                        
-                        # Put text
-                        cv2.putText(
-                            frame,
-                            label_text,
-                            (startX + 4, startY - 4),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6,
-                            (255, 255, 255),
-                            2
-                        )
-                
-                # Display current frame
-                cv2.imshow("Face Mask Detection", frame)
-                
-                # Save frame if output writer is active
-                if out:
-                    out.write(frame)
-                
-                # Exit on 'q' key
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-            
-            # Release resources
-            cap.release()
-            if out:
-                out.release()
-            cv2.destroyAllWindows()
-            
-            logging.info(f"Video processing complete - {frame_count} frames processed")
-            
-            return {
-                'status': 'completed',
-                'frames_processed': frame_count,
-                'output_path': output_path if save_output else None
-            }
-        
-        except Exception as e:
-            logging.error(f"Error in predict_video: {str(e)}")
-            raise CustomException(e, sys)
+    def detect_mask(self,img):
+        sample = cv2.resize(img,(224,224))
+        y_pred = self.model.predict_classes(img.reshape(1,224,224,3))
+        return y_pred
     
-    def predict_webcam(self):
-        """
-        Real-time prediction using webcam
-        """
-        return self.predict_video(video_path=None)
+    def predict2(self):
+        cap = cv2.VideoCapture(0)
+        
+        while True:
+            ret,frame = cap.read()
+            # prediction function fo frame
+            
+            cv2.imshow("window",frame)
+            if cv2.waitKey(1) & 0xFF==ord('x'):
+                break
+        cv2.destroyAllWindows()
+            
 
+# path = '../artifact/data/test/images/19-with-mask_jpg.rf.c15f92c5014adda1b32d128e903bd3ce.jpg'
+# obj = PredictPipeline()     
+# # obj.predict2()
+# y_pred = obj.detect_mask(path)
