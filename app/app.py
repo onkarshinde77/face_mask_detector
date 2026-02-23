@@ -24,11 +24,11 @@ except Exception as e:
     predict_pipeline = None
 
 # Legacy model for fallback
-# MODEL_PATH = "artifact/models/face_mask_model4.keras"
-# try:
-#     model = load_model(MODEL_PATH)
-# except:
-#     model = None
+MODEL_PATH = "artifact/models/face_mask_model4.keras"
+try:
+    model = load_model(MODEL_PATH)
+except:
+    model = None
 
 # FACE DETECTOR (Legacy)
 face_detector = cv2.CascadeClassifier(
