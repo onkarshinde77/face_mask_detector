@@ -9,13 +9,11 @@
   <body>
     <div class="container">
       <h1>📸 Mask Detection</h1>
-
       <!-- Tabs -->
       <div class="tabs">
         <button class="tab-btn active" data-tab="upload">📤 Upload Photo</button>
         <button class="tab-btn" data-tab="capture">📷 Capture Photo</button>
       </div>
-
       <!-- Upload Tab -->
       <div id="upload-tab" class="tab-content active">
         <div class="upload-section">
@@ -27,23 +25,29 @@
           </form>
         </div>
       </div>
-
       <!-- Capture Tab -->
       <div id="capture-tab" class="tab-content">
         <div class="upload-section">
-          <video id="cameraVideo" autoplay playsinline muted class="camera-video" style="display:none;"></video>
+          <!-- Idle placeholder (shown before camera starts) -->
+          <div id="cameraPlaceholder" class="camera-placeholder">
+            <div class="camera-placeholder-icon">📷</div>
+            <p>Click <strong>Start Camera</strong> to enable your webcam</p>
+          </div>
+          <!-- Live feed (hidden until camera starts) -->
+          <video id="cameraVideo" autoplay playsinline muted class="camera-video"></video>
+          <!-- Snapshot preview (hidden until captured) -->
           <div id="previewContainer"></div>
           <canvas id="canvas" hidden></canvas>
           <div class="camera-buttons">
-            <button id="startCameraBtn" class="btn">▶️ Start Camera</button>
-            <button id="captureBtn" class="btn btn-success" disabled>📸 Capture</button>
-            <button id="retakeBtn" class="btn btn-secondary hidden">🔄 Retake</button>
-            <button id="analyzeBtn" class="btn btn-success hidden">✅ Analyze Mask</button>
+            <button id="startCameraBtn"  class="btn btn-secondary">▶️ Start Camera</button>
+            <button id="captureBtn"      class="btn btn-success hidden">📸 Capture</button>
+            <button id="stopCameraBtn"   class="btn hidden">⏹ Stop</button>
+            <button id="retakeBtn"       class="btn btn-secondary hidden">🔄 Retake</button>
+            <button id="analyzeBtn"      class="btn btn-success hidden">✅ Analyze Mask</button>
           </div>
         </div>
       </div>
-
-      <!-- Result Section (populated by Jinja2 on page reload OR by JS after AJAX) -->
+      <!-- Result Section (Jinja2 on page reload OR JS after AJAX) -->
       {% if image_path %}
       <div class="result-section">
         <div class="summary">{{ detection }}</div>
