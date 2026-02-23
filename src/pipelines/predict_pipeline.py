@@ -52,7 +52,6 @@ def _draw_detection(frame: np.ndarray, coords: tuple,
     # Label text
     text = f"{label}: {confidence * 100:.1f}%"
     (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-
     # Filled background rectangle for text
     cv2.rectangle(
         frame,
@@ -73,11 +72,6 @@ def _draw_detection(frame: np.ndarray, coords: tuple,
 
 
 def _parse_prediction(pred: np.ndarray) -> tuple[str, float]:
-    """
-    Normalise model output regardless of whether the model outputs
-    a single sigmoid score or a 2-class softmax vector.
-    Returns (label, confidence_0_to_1).
-    """
     if pred.shape[0] == 1:
         score = float(pred[0])
         label = "No Mask" if score > 0.5 else "Mask"
@@ -87,11 +81,6 @@ def _parse_prediction(pred: np.ndarray) -> tuple[str, float]:
         label = "No Mask" if idx == 1 else "Mask"
         conf  = float(pred[idx])
     return label, conf
-
-
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║                    PREDICTION PIPELINE (SINGLETON)                      ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
 
 class PredictPipeline:
     _instance_lock = threading.Lock()
@@ -151,13 +140,6 @@ class PredictPipeline:
         self,
         frame: np.ndarray,
     ) -> tuple[np.ndarray, list[dict]]:
-        """
-        Run face detection + mask prediction on one BGR frame.
-        Returns
-        -------
-        annotated_frame : np.ndarray   BGR frame with boxes/labels drawn
-        detections      : list[dict]   [{label, face_num, confidence, coords}]
-        """
         try:
             faces = self.face_cropper.detect_faces(frame)
             annotated  = frame.copy()
