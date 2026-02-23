@@ -1,14 +1,33 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Live Feed</title>
-    <style>body { text-align: center; font-family: Arial; }</style>
-</head>
-<body>
-    <h1>Live Camera Detection</h1>
-    <div style="margin: 20px;">
-        <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border: 2px solid #333;">
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Feed - Face Mask Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/live.css') }}" />
+  </head>
+  <body>
+    <div class="live-camera">
+      <h1>📹 Live Camera Detection</h1>
+
+      <div class="video-wrapper">
+        <span class="corner-tr"></span>
+        <span class="corner-bl"></span>
+        <div class="live-badge">
+          <span class="dot"></span> Live
+        </div>
+        <div class="scan-line"></div>
+        <!-- In Django: <img src="{{ url_for('video_feed') }}" class="video-frame" width="640" height="480" /> -->
+        <img src="https://placehold.co/640x480/0e1420/00f0c0?text=VIDEO+FEED" class="video-frame" width="640" height="480" alt="Live camera feed" />
+      </div>
+
+      <div class="status-bar">
+        <span>RESOLUTION&nbsp;<span class="ok">640 × 480</span></span>
+        <span>STATUS&nbsp;<span class="ok">● STREAMING</span></span>
+        <span>MODEL&nbsp;<span class="ok">ACTIVE</span></span>
+      </div>
+
+      <a href="/" class="back-link">← Back to Home</a>
     </div>
-    <a href="/" style="padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px;">Back to Home</a>
-</body>
+  </body>
 </html>
