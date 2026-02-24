@@ -1,7 +1,6 @@
 face_detector/res10_300x300_ssd_iter_140000.caffemodel filter=lfs diff=lfs merge=lfs -text
-data.zip filter=lfs diff=lfs merge=lfs -text
-* !text !filter !merge !diff
 artifact/models/face_mask_detection.keras filter=lfs diff=lfs merge=lfs -text
+data.zip filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpeg filter=lfs diff=lfs merge=lfs -text
