@@ -16,6 +16,7 @@ from werkzeug.utils import secure_filename
 sys.path.insert(0, os.path.dirname(__file__))
 from src.pipelines.predict_pipeline import PredictPipeline
 from src.logger.logger import logging
+from functools import wraps
 
 # ── App config ────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -37,7 +38,6 @@ except Exception as _exc:
     pipeline = None
 
 def _pipeline_required(fn):
-    from functools import wraps
     @wraps(fn)
     def _w(*a, **kw):
         if pipeline is None:
@@ -314,4 +314,4 @@ def not_found(e):
     return render_template("index.html"), 404
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)

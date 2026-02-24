@@ -14,7 +14,6 @@ from src.exception.exception import CustomException
 from src.logger.logger import logging
 from src.components.face_crop import FaceCropper
 
-
 # ── CPU / GPU config ─────────────────────────────────────────────────────────
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'          # Force CPU
 tf.config.threading.set_inter_op_parallelism_threads(2)
@@ -111,6 +110,7 @@ class PredictPipeline:
 
             logging.info(f"Loading model from: {self.model_path}")
             self.model = load_model(self.model_path)
+            # Check model output shape
             self.output_shape = self.model.output_shape
 
             # Warm-up: run one dummy prediction to initialise TF graph
