@@ -12,6 +12,7 @@ from tensorflow.keras.applications.vgg16 import preprocess_input
 from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE, MODEL_NAME
 from src.exception.exception import CustomException
 from src.logger.logger import logging
+from src.components.face_crop import FaceCropper
 
 # ── CPU / GPU config ─────────────────────────────────────────────────────────
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'          # Force CPU
