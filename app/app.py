@@ -11,31 +11,30 @@ from flask import (
     Flask, render_template, request, Response,
     jsonify, stream_with_context, url_for,
 )
+from functools import wraps
 from werkzeug.utils import secure_filename
 
 sys.path.insert(0, os.path.dirname(__file__))
-from src.pipelines.predict_pipeline import PredictPipeline
-from src.logger.logger import logging
-from functools import wraps
+from components.prediction_pipelines import PredictPipeline
 
-# ── App config ────────────────────────────────────────────────────────────────
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024   # 500 MB
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB
 
 ALLOWED_IMAGE = {"png", "jpg", "jpeg", "gif", "webp", "bmp"}
 ALLOWED_VIDEO = {"mp4", "avi", "mov", "mkv", "webm"}
+TEMP_DIR      = tempfile.mkdtemp(prefix="facemask_")
 
-# Temp dir for video processing (auto-cleaned by OS)
-TEMP_DIR = tempfile.mkdtemp(prefix="facemask_")
-logging.info(f"Temp dir: {TEMP_DIR}")
-
-# ── Pipeline (loaded once) ────────────────────────────────────────────────────
+# ── Pipeline (loaded once at startup) ────────────────────────────────────────
 try:
     pipeline = PredictPipeline()
-    logging.info("PredictPipeline ready.")
-except Exception as _exc:
-    logging.error(f"Pipeline load failed: {_exc}")
+except Exception:
+    import traceback
+    print("=" * 60)
+    print("PIPELINE LOAD ERROR — model will be unavailable")
+    traceback.print_exc()
+    print("=" * 60)
     pipeline = None
+
 
 def _pipeline_required(fn):
     @wraps(fn)
@@ -45,18 +44,21 @@ def _pipeline_required(fn):
         return fn(*a, **kw)
     return _w
 
-# ── Video job store ───────────────────────────────────────────────────────────
-# { id: { status, progress, total_frames, output_path, error } }
+
+# ── Video job store: { id: {status, progress, total_frames, output_path, error} }
 VIDEO_JOBS: dict = {}
 
 
-def _allowed(filename, allowed_set):
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _allowed(filename: str, allowed_set: set) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_set
 
+
 def _frame_to_b64(frame: np.ndarray) -> str:
-    """Encode BGR frame to base64 JPEG data-URL."""
     _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 88])
     return "data:image/jpeg;base64," + base64.b64encode(buf).decode()
+
 
 def _build_summary(detections: list) -> str:
     if not detections:
@@ -65,24 +67,83 @@ def _build_summary(detections: list) -> str:
     n = len(detections) - m
     return f"✅ {len(detections)} Face(s) — {m} With Mask / {n} Without Mask"
 
+
+def _stream_file(path: str, mimetype: str):
+    """Generic file streamer with HTTP Range support (needed for <video> seek)."""
+    size         = os.path.getsize(path)
+    range_header = request.headers.get("Range")
+
+    def _read(start: int, length: int):
+        with open(path, "rb") as f:
+            f.seek(start)
+            remaining = length
+            while remaining:
+                chunk = f.read(min(8192, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+                yield chunk
+
+    if range_header:
+        parts = range_header.strip().replace("bytes=", "").split("-")
+        byte1 = int(parts[0])
+        byte2 = int(parts[1]) if parts[1] else size - 1
+        length = byte2 - byte1 + 1
+        return Response(
+            stream_with_context(_read(byte1, length)),
+            206, mimetype=mimetype,
+            headers={
+                "Content-Range" : f"bytes {byte1}-{byte2}/{size}",
+                "Accept-Ranges" : "bytes",
+                "Content-Length": str(length),
+            },
+        )
+
+    return Response(
+        stream_with_context(_read(0, size)),
+        mimetype=mimetype,
+        headers={"Content-Length": str(size), "Accept-Ranges": "bytes"},
+    )
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# ── Live camera ───────────────────────────────────────────────────────────────
+
 @app.route("/live")
 def live():
     return render_template("live.html")
 
+
 @app.route("/video_feed")
 @_pipeline_required
 def video_feed():
+    """
+    MJPEG stream for the live page.
+
+    Query params
+    ------------
+    camera  : int   camera index (default 0)
+    flip    : bool  mirror horizontally — use 'true' for front cam,
+                    'false' for back cam / CCTV (default true)
+    """
+    camera_index = int(request.args.get("camera", 0))
+    flip         = request.args.get("flip", "true").lower() != "false"
+
     return Response(
-        pipeline.generate_live_frames(camera_index=0, frame_skip=1, jpeg_quality=75),
+        pipeline.generate_live_frames(
+            camera_index=camera_index,
+            frame_skip=1,
+            jpeg_quality=75,
+            flip=flip,
+        ),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
 
-# ── Photo detection (NO FILE SAVING) ─────────────────────────────────────────
+
 @app.route("/upload_photo", methods=["GET", "POST"])
 def upload_photo():
     if request.method == "GET":
@@ -91,17 +152,19 @@ def upload_photo():
     if pipeline is None:
         return jsonify({"success": False, "error": "Model not loaded."}), 503
 
-    # ── Branch A: multipart image file ───────────────────────────────────────
+    # Branch A: multipart image file (from file picker or camera capture)
     file = request.files.get("file")
     if file and file.filename and _allowed(file.filename, ALLOWED_IMAGE):
         try:
-            # Read directly into memory — no disk write
             file_bytes = np.frombuffer(file.read(), np.uint8)
             frame = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
             if frame is None:
                 return jsonify({"success": False, "error": "Cannot decode image."}), 400
 
-            annotated, detections = pipeline.predict_frame(frame)
+            # Use robust path: multiscale + enhance retries
+            # This handles both front-camera (low res, mirrored) and
+            # back-camera (high res, dark, rotated) photos correctly.
+            annotated, detections = pipeline.predict_frame_robust(frame)
             return jsonify({
                 "success"   : True,
                 "image_b64" : _frame_to_b64(annotated),
@@ -109,14 +172,17 @@ def upload_photo():
                 "detections": detections,
             })
         except Exception as exc:
-            logging.error(f"predict_frame error: {exc}")
             return jsonify({"success": False, "error": str(exc)}), 500
 
-    # ── Branch B: base64 JSON from webcam ────────────────────────────────────
+    # Branch B: base64 JSON (webcam capture from browser canvas)
     data = request.get_json(silent=True)
     if data and "image" in data:
         try:
-            result = pipeline.predict_base64(data["image"])
+            # flip_horizontal reflects whether the JS already un-mirrored the
+            # canvas. Default False = JS handled it; pass True from the client
+            # if the canvas was NOT flipped before encoding.
+            flip = bool(data.get("flip_horizontal", False))
+            result = pipeline.predict_base64(data["image"], flip_horizontal=flip)
             return jsonify({
                 "success"   : True,
                 "image_b64" : _frame_to_b64(result["image"]),
@@ -124,24 +190,15 @@ def upload_photo():
                 "detections": result["detections"],
             })
         except Exception as exc:
-            logging.error(f"predict_base64 error: {exc}")
             return jsonify({"success": False, "error": str(exc)}), 500
 
     return jsonify({"success": False, "error": "No valid file or image data."}), 400
 
 
-def _count_frames(path: str) -> int:
-    cap = cv2.VideoCapture(path)
-    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    cap.release()
-    return max(total, 1)
+# ── Video processing ──────────────────────────────────────────────────────────
 
 def _process_video_job(video_id: str, input_path: str):
-    """
-    Background thread: process video with mask detection.
-    Updates VIDEO_JOBS[video_id]['progress'] (0–100) as frames complete.
-    Output saved to TEMP_DIR for streaming/download.
-    """
+    """Background thread: process video, write annotated output to TEMP_DIR."""
     try:
         cap    = cv2.VideoCapture(input_path)
         fps    = cap.get(cv2.CAP_PROP_FPS) or 25.0
@@ -171,10 +228,7 @@ def _process_video_job(video_id: str, input_path: str):
             "progress"   : 100,
             "output_path": out_path,
         })
-        logging.info(f"Job {video_id} done: {done} frames")
-
     except Exception as exc:
-        logging.error(f"Video job {video_id} failed: {exc}")
         VIDEO_JOBS[video_id].update({"status": "error", "error": str(exc)})
 
 
@@ -192,16 +246,16 @@ def upload_video():
     if not _allowed(file.filename, ALLOWED_VIDEO):
         return jsonify({"success": False, "error": "Invalid file type."}), 400
 
-    video_id  = uuid.uuid4().hex
-    in_path   = os.path.join(TEMP_DIR, f"in_{video_id}_{secure_filename(file.filename)}")
+    video_id = uuid.uuid4().hex
+    in_path  = os.path.join(TEMP_DIR, f"in_{video_id}_{secure_filename(file.filename)}")
     file.save(in_path)
 
     VIDEO_JOBS[video_id] = {
-        "status"     : "processing",
-        "progress"   : 0,
+        "status"      : "processing",
+        "progress"    : 0,
         "total_frames": 0,
-        "output_path": None,
-        "error"      : None,
+        "output_path" : None,
+        "error"       : None,
     }
     threading.Thread(
         target=_process_video_job, args=(video_id, in_path), daemon=True
@@ -215,10 +269,7 @@ def video_status(video_id: str):
     job = VIDEO_JOBS.get(video_id)
     if not job:
         return jsonify({"status": "not_found"}), 404
-    resp = {
-        "status"  : job["status"],
-        "progress": job.get("progress", 0),
-    }
+    resp = {"status": job["status"], "progress": job.get("progress", 0)}
     if job["status"] == "done":
         resp["stream_url"]   = url_for("video_stream",   video_id=video_id)
         resp["download_url"] = url_for("video_download", video_id=video_id)
@@ -229,82 +280,36 @@ def video_status(video_id: str):
 
 @app.route("/video_stream/<video_id>")
 def video_stream(video_id: str):
-    """Stream processed video for in-browser <video> playback."""
     job = VIDEO_JOBS.get(video_id)
     if not job or job["status"] != "done":
         return jsonify({"error": "Not ready"}), 404
-
-    path = job["output_path"]
-    size = os.path.getsize(path)
-
-    # Support HTTP Range for <video> seek
-    range_header = request.headers.get("Range")
-    if range_header:
-        byte1, byte2 = 0, None
-        m = range_header.strip().replace("bytes=", "").split("-")
-        byte1 = int(m[0])
-        if m[1]: byte2 = int(m[1])
-        length = (byte2 - byte1 + 1) if byte2 else (size - byte1)
-
-        def _generate(start, length):
-            with open(path, "rb") as f:
-                f.seek(start)
-                remaining = length
-                while remaining:
-                    chunk = f.read(min(8192, remaining))
-                    if not chunk: break
-                    remaining -= len(chunk)
-                    yield chunk
-
-        byte2 = byte1 + length - 1
-        resp = Response(
-            stream_with_context(_generate(byte1, length)),
-            206, mimetype="video/mp4",
-            headers={
-                "Content-Range" : f"bytes {byte1}-{byte2}/{size}",
-                "Accept-Ranges" : "bytes",
-                "Content-Length": str(length),
-            },
-        )
-        return resp
-
-    def _full():
-        with open(path, "rb") as f:
-            while True:
-                chunk = f.read(8192)
-                if not chunk: break
-                yield chunk
-
-    return Response(
-        stream_with_context(_full()),
-        mimetype="video/mp4",
-        headers={"Content-Length": str(size), "Accept-Ranges": "bytes"},
-    )
+    return _stream_file(job["output_path"], "video/mp4")
 
 
 @app.route("/video_download/<video_id>")
 def video_download(video_id: str):
-    """Force-download the processed video."""
     job = VIDEO_JOBS.get(video_id)
     if not job or job["status"] != "done":
         return jsonify({"error": "Not ready"}), 404
     path = job["output_path"]
+    size = os.path.getsize(path)
+
     def _gen():
         with open(path, "rb") as f:
-            while True:
-                c = f.read(8192)
-                if not c: break
-                yield c
+            while chunk := f.read(8192):
+                yield chunk
+
     return Response(
         stream_with_context(_gen()),
         mimetype="video/mp4",
         headers={
             "Content-Disposition": f'attachment; filename="detected_{video_id}.mp4"',
-            "Content-Length"     : str(os.path.getsize(path)),
+            "Content-Length"     : str(size),
         },
     )
 
 # ── Error handlers ────────────────────────────────────────────────────────────
+
 @app.errorhandler(413)
 def too_large(e):
     return jsonify({"success": False, "error": "File too large (max 500 MB)."}), 413
@@ -313,5 +318,6 @@ def too_large(e):
 def not_found(e):
     return render_template("index.html"), 404
 
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=7860, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=7860, debug=True, threaded=True)

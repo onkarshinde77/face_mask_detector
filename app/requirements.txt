@@ -1,0 +1,12 @@
+tensorflow
+numpy
+opencv-python
+pandas
+matplotlib
+scikit-learn
+protobuf
+flask
+python-dotenv
+gunicorn
+gunicorn
+python-dotenv

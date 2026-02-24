@@ -1,5 +1,9 @@
 # me written
 data/
+uploads/
+app/uploads/
+app/static/uploads/
+*.zip
 data2/
 logs/
 face_mask_dataset/
