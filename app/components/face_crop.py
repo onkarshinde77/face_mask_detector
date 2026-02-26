@@ -9,11 +9,13 @@ Detection capability comparison:
     Profile 90°        20%          70%
     Back of head        0%           0%
 """
-
 import cv2
 import numpy as np
 import os
 import urllib.request
+from mediapipe.tasks import python as mp_python
+from mediapipe.tasks.python import vision as mp_vision
+import mediapipe as mp
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(BASE_DIR, "models", "face_detector")
@@ -30,10 +32,7 @@ _MEDIAPIPE_AVAILABLE = False
 _MEDIAPIPE_NEW_API = False
 
 try:
-    import mediapipe as mp
     try:
-        from mediapipe.tasks import python as mp_python
-        from mediapipe.tasks.python import vision as mp_vision
         _MEDIAPIPE_AVAILABLE = True
         _MEDIAPIPE_NEW_API = True
     except ImportError:
