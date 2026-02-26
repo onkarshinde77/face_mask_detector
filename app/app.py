@@ -6,14 +6,12 @@ import threading
 import tempfile
 import cv2
 import numpy as np
-
 from flask import (
     Flask, render_template, request, Response,
     jsonify, stream_with_context, url_for,
 )
 from functools import wraps
 from werkzeug.utils import secure_filename
-
 sys.path.insert(0, os.path.dirname(__file__))
 from components.prediction_pipelines import PredictPipeline
 
@@ -43,7 +41,6 @@ def _pipeline_required(fn):
             return jsonify({"error": "Model not loaded."}), 503
         return fn(*a, **kw)
     return _w
-
 
 # ── Video job store: { id: {status, progress, total_frames, output_path, error} }
 VIDEO_JOBS: dict = {}
@@ -121,15 +118,6 @@ def live():
 @app.route("/video_feed")
 @_pipeline_required
 def video_feed():
-    """
-    MJPEG stream for the live page.
-
-    Query params
-    ------------
-    camera  : int   camera index (default 0)
-    flip    : bool  mirror horizontally — use 'true' for front cam,
-                    'false' for back cam / CCTV (default true)
-    """
     camera_index = int(request.args.get("camera", 0))
     flip         = request.args.get("flip", "true").lower() != "false"
 
@@ -142,7 +130,6 @@ def video_feed():
         ),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
-
 
 @app.route("/upload_photo", methods=["GET", "POST"])
 def upload_photo():
@@ -196,7 +183,6 @@ def upload_photo():
 
 
 # ── Video processing ──────────────────────────────────────────────────────────
-
 def _process_video_job(video_id: str, input_path: str):
     """Background thread: process video, write annotated output to TEMP_DIR."""
     try:
@@ -213,9 +199,7 @@ def _process_video_job(video_id: str, input_path: str):
             cv2.VideoWriter_fourcc(*"mp4v"),
             fps, (width, height),
         )
-
         VIDEO_JOBS[video_id].update({"total_frames": total, "progress": 0})
-
         done = 0
         for ann_frame, _ in pipeline.predict_video_frames(input_path, frame_skip=1):
             writer.write(ann_frame)
@@ -309,7 +293,6 @@ def video_download(video_id: str):
     )
 
 # ── Error handlers ────────────────────────────────────────────────────────────
-
 @app.errorhandler(413)
 def too_large(e):
     return jsonify({"success": False, "error": "File too large (max 500 MB)."}), 413
@@ -320,4 +303,4 @@ def not_found(e):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=7860, debug=True, threaded=True)
+    app.run(host="0.0.0.0", port=7860, debug=False, threaded=True)
