@@ -664,46 +664,6 @@ http://localhost:5000/upload_video  # Video upload
 http://localhost:5000/live          # Live camera
 ```
 
----
-
-## 📚 API Reference
-
-### PredictPipeline Class
-
-```python
-class PredictPipeline:
-    def predict_image(image_path: str) -> dict
-    def predict_video(video_path: str, save_output: bool, output_path: str) -> dict
-    def predict_webcam() -> dict
-```
-
-### FaceCropper Class
-
-```python
-class FaceCropper:
-    def detect_faces(image: np.ndarray) -> list
-    def crop_faces(image: np.ndarray, faces: list) -> list
-```
-
-### Return Formats
-
-**predict_image() output:**
-```python
-{
-    'image': np.ndarray,              # Annotated image
-    'detections': [                   # List of detections
-        {
-            'coords': (x1, y1, x2, y2),
-            'label': 'Mask' | 'No Mask',
-            'confidence': float
-        }
-    ],
-    'num_faces': int
-}
-```
-
----
-
 ## 🏗️ Technical Architecture
 
 ### System Design
