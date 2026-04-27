@@ -14,9 +14,6 @@ class ModelTrainer:
             self.train_data_artifact:str = artifact.train_dir_path
             self.test_data_artifact:str = artifact.test_dir_path
             self.valid_data_artifact:str = artifact.valid_dir_path
-            self.train_lable_artifact:str = artifact.train_lable_path
-            self.test_lable_artifact:str = artifact.test_lable_path
-            self.valid_lable_artifact:str = artifact.valid_lable_path
 
             self.model_save_path:str = os.path.join(
                 constant.ARTIFACT_DIR,constant.MODEL_DIR
@@ -31,16 +28,13 @@ class ModelTrainer:
         try:
             model:tensorflow.keras.models = self.model_obj.model()
             train_data_generation = self.model_obj.create_data_generator(
-                image_dir_path=self.train_data_artifact,
-                label_csv_path=self.train_lable_artifact
+                image_dir_path=self.train_data_artifact
             )
             test_data_generation = self.model_obj.create_data_generator(
-                image_dir_path=self.test_data_artifact,
-                label_csv_path=self.test_lable_artifact
+                image_dir_path=self.test_data_artifact
             )
             valid_data_generation = self.model_obj.create_data_generator(
-                image_dir_path=self.valid_data_artifact,
-                label_csv_path=self.valid_lable_artifact
+                image_dir_path=self.valid_data_artifact
             )
 
             history = model.fit(

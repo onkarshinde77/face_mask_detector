@@ -6,7 +6,6 @@ from src.logger.logger import logging
 import tensorflow as tf
 from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras import layers, models
-import pandas as pd
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications.efficientnet import preprocess_input
 
@@ -32,7 +31,7 @@ class Model:
             # Build model
             model = models.Sequential([
                 base_model,
-                layers.GlobalAveragePooling2D(),   # better than Flatten
+                layers.GlobalAveragePooling2D(),
                 layers.BatchNormalization(),
                 layers.Dense(128, activation="relu"),
                 layers.Dropout(0.5),
@@ -58,27 +57,21 @@ class Model:
     @staticmethod
     def create_data_generator(
         image_dir_path: str,
-        label_csv_path: str,
         img_size: int = 224,
         batch_size: int = 32,
         shuffle: bool = True
     ):
         try:
-            if not os.path.exists(image_dir_path) or not os.path.exists(label_csv_path):
-                raise FileNotFoundError("File path not found")
-
-            df = pd.read_csv(label_csv_path)
+            if not os.path.exists(image_dir_path):
+                raise FileNotFoundError("Directory path not found")
 
             # EfficientNet preprocessing
             datagen = ImageDataGenerator(
                 preprocessing_function=preprocess_input
             )
 
-            generator = datagen.flow_from_dataframe(
-                dataframe=df,
+            generator = datagen.flow_from_directory(
                 directory=image_dir_path,
-                x_col="filename",
-                y_col="lable",   # make sure column name is correct
                 target_size=(img_size, img_size),
                 batch_size=batch_size,
                 class_mode="binary",
