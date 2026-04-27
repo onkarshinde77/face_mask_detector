@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
+# from tensorflow.keras.applications.vgg16 import preprocess_input
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from components.face_crop import FaceCropper
 
@@ -16,7 +17,8 @@ tf.config.threading.set_intra_op_parallelism_threads(4)
 IMG_SIZE   = 224
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR  = os.path.join(BASE_DIR, "models")
-MODEL_NAME = "face_mask_model4_f16.keras"
+# MODEL_NAME = "face_mask_model4_f16.keras"
+MODEL_NAME = "efficientnetb0_model.h5"
 
 
 # ── Drawing ───────────────────────────────────────────────────────────────────

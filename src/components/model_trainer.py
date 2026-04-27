@@ -1,5 +1,7 @@
 import os
 import sys
+import tensorflow as tf
+from datetime import datetime
 from src.exception.exception import CustomException
 from src import constant
 from src.logger.logger import logging
@@ -26,7 +28,7 @@ class ModelTrainer:
 
     def model_training(self):
         try:
-            model:tensorflow.keras.models = self.model_obj.model()
+            model = self.model_obj.model()
             train_data_generation = self.model_obj.create_data_generator(
                 image_dir_path=self.train_data_artifact
             )
@@ -37,10 +39,22 @@ class ModelTrainer:
                 image_dir_path=self.valid_data_artifact
             )
 
+            # --- Create runs directory for history ---
+            runs_dir = "runs"
+            time_stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            current_run_dir = os.path.join(runs_dir, f"run_{time_stamp}")
+            os.makedirs(current_run_dir, exist_ok=True)
+
+            tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=current_run_dir, histogram_freq=1)
+            csv_logger = tf.keras.callbacks.CSVLogger(os.path.join(current_run_dir, 'training_history.csv'))
+            callbacks = [tensorboard_callback, csv_logger]
+            # -----------------------------------------
+
             history = model.fit(
                 train_data_generation,
                 validation_data=valid_data_generation,
-                epochs=constant.EPOCHS
+                epochs=constant.EPOCHS,
+                callbacks=callbacks
             )
 
             logging.info("Model Training Completed")
