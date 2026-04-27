@@ -1,5 +1,5 @@
 # unprocess data path
-DATA_DIR:str = "data"
+DATA_DIR:str = "face_mask_dataset"
 TRAIN_DATA_DIR:str = "train"
 TEST_DATA_DIR:str = "test"
 VALID_DATA_DIR:str = "valid"

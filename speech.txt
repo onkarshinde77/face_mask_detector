@@ -1,5 +1,5 @@
 Hi everyone! Lets i will show you my first OpenCV Project which is Face Mask Detection System 
-that can identify the people are wearing masks or not.
+that can identify the people are wearing masks or not.  
 
 I developed an end-to-end machine learning system. Here's how it works.
 First, the system detects all human faces in an image or video. Then it classifies 
