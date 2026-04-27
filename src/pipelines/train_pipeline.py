@@ -21,8 +21,9 @@ class TrainPipeline:
 
             logging.info("Start Model Training")
             model_trainer = ModelTrainer(artifact=data_ingestion_artifact)
-            model_trainer.initialize_training()
+            history = model_trainer.initialize_training()
             logging.info("Model Training Complete")
+            return history
             
         except Exception as e:
             raise CustomException(e, sys)
