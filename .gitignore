@@ -1,8 +1,8 @@
 # me written
 data/
 uploads/
-face_detector/
 app/uploads/
+face_detector/face_detector/
 app/static/uploads/
 *.zip
 data2/
