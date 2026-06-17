@@ -3,16 +3,15 @@ import base64
 import threading
 import cv2
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-# from tensorflow.keras.applications.vgg16 import preprocess_input
-from tensorflow.keras.applications.vgg16 import preprocess_input
+
+import torch
+import torch.nn as nn
+from torchvision.models import (
+    efficientnet_b4,
+    EfficientNet_B4_Weights
+)
 from components.face_crop import FaceCropper
 
-# Force CPU (remove these two lines if you have a GPU)
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-tf.config.threading.set_inter_op_parallelism_threads(2)
-tf.config.threading.set_intra_op_parallelism_threads(4)
 
 IMG_SIZE   = 380
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -106,6 +105,28 @@ def _decode_base64_image(b64_string: str) -> np.ndarray:
         raise ValueError("Could not decode base64 image")
     return frame
 
+def load_model(model_path, device):
+    model = efficientnet_b4(
+        weights=None
+    )
+    in_features = model.classifier[1].in_features
+    model.classifier = nn.Sequential(
+        nn.Dropout(0.3),
+        nn.Linear(
+            in_features,
+            1
+        )
+    )
+    model.load_state_dict(
+        torch.load(
+            model_path,
+            map_location=device
+        )
+    )
+    model.to(device)
+    model.eval()
+    
+    return model
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
 # ║                          PREDICTION PIPELINE                                ║
@@ -124,15 +145,21 @@ class PredictPipeline:
     """
 
     def __init__(self):
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available()
+            else "cpu"
+        )
+
         model_path = os.path.join(MODEL_DIR, MODEL_NAME)
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model not found at {model_path}")
 
-        self.model = load_model(model_path)
+        self.model = load_model(model_path, self.device)
 
-        # Warm-up: initialise TF graph before first real request
-        dummy = np.zeros((1, IMG_SIZE, IMG_SIZE, 3), dtype="float32")
-        self.model.predict(dummy, verbose=0)
+        # Warm-up: run one dummy prediction to initialise CUDA/PyTorch model
+        dummy = torch.zeros((1, 3, IMG_SIZE, IMG_SIZE), dtype=torch.float32, device=self.device)
+        with torch.no_grad():
+            _ = self.model(dummy)
 
         self.face_cropper = FaceCropper()
         self._infer_lock  = threading.Lock()
@@ -141,17 +168,25 @@ class PredictPipeline:
 
     def _infer_faces(self, face_crops: list[np.ndarray]) -> np.ndarray:
         """Preprocess a list of BGR face crops and run a single batch prediction."""
-        batch = np.stack([
-            preprocess_input(
-                np.asarray(
-                    cv2.resize(cv2.cvtColor(face, cv2.COLOR_BGR2RGB), (IMG_SIZE, IMG_SIZE)),
-                    dtype="float32"
-                )
-            )
-            for face in face_crops
-        ])
+        preprocessed = []
+        for face in face_crops:
+            rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+            resized = cv2.resize(rgb, (IMG_SIZE, IMG_SIZE))
+            # Convert to float and scale to [0.0, 1.0]
+            normalized = resized.astype(np.float32) / 255.0
+            # Transpose HWC to CHW
+            chw = np.transpose(normalized, (2, 0, 1))
+            preprocessed.append(chw)
+
+        batch = np.stack(preprocessed)
+        batch_tensor = torch.from_numpy(batch).to(self.device)
+
         with self._infer_lock:
-            return self.model.predict(batch, verbose=0)
+            with torch.no_grad():
+                logits = self.model(batch_tensor)
+                probs = torch.sigmoid(logits)
+
+        return probs.cpu().numpy()
 
     # ── Core: single frame → annotated frame + detections ────────────────────
 
