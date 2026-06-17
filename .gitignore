@@ -13,7 +13,7 @@ app/static/
 
 .venv2/
 Miniconda3-latest-Linux-x86_64.sh
-app/models/EfficientNetB4.pth
+# app/models/EfficientNetB4.pth
 assets/EfficientNetB0/
 
 # Byte-compiled / optimized / DLL files
