@@ -14,11 +14,11 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 tf.config.threading.set_inter_op_parallelism_threads(2)
 tf.config.threading.set_intra_op_parallelism_threads(4)
 
-IMG_SIZE   = 224
+IMG_SIZE   = 380
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR  = os.path.join(BASE_DIR, "models")
 # MODEL_NAME = "face_mask_model4_f16.keras"
-MODEL_NAME = "efficientnetb0_model.h5"
+MODEL_NAME = "EfficientNetB4.pth"
 
 
 # ── Drawing ───────────────────────────────────────────────────────────────────

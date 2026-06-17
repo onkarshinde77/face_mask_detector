@@ -1,3 +1,7 @@
+face_mask_dataset
+face_mask_dataset/
+artifact/
+
 # Python cache
 __pycache__/
 *.pyc
