@@ -4,215 +4,177 @@ import base64
 import threading
 import cv2
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
-from tensorflow.keras.applications.efficientnet import preprocess_input
+
+import torch
+import torch.nn as nn
+from torchvision import transforms
+from torchvision.models import efficientnet_b0
 
 from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE, MODEL_NAME
 from src.exception.exception import CustomException
 from src.logger.logger import logging
 from src.components.face_crop import FaceCropper
 
-# ── CPU / GPU config ─────────────────────────────────────────────────────────
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'          # Force CPU
-tf.config.threading.set_inter_op_parallelism_threads(2)
-tf.config.threading.set_intra_op_parallelism_threads(4)
-logging.info("CPU-optimized inference mode enabled")
 
-def _draw_detection(frame: np.ndarray, coords: tuple,
-                    label: str, confidence: float) -> np.ndarray:
-    """
-    Draw a bounding box + filled label banner on *frame* (in-place).
-    Returns the same frame for convenience.
-    """
+# ImageNet normalization — same values used during training
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD  = [0.229, 0.224, 0.225]
+
+# Preprocessing pipeline applied to every face crop before model inference
+preprocess = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize((IMG_SIZE, IMG_SIZE)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+])
+
+
+def draw_bounding_box(frame, coords, label, confidence):
+    """Draw a colored bounding box and label on the frame."""
     startX, startY, endX, endY = coords
-    color = (0, 255, 0) if label == "Mask" else (0, 0, 255)   # BGR
+    color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
 
-    # Bounding box
     cv2.rectangle(frame, (startX, startY), (endX, endY), color, 3)
 
-    # Label text
     text = f"{label}: {confidence * 100:.1f}%"
-    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-
-    # Filled background rectangle for text
+    (text_width, text_height), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
     cv2.rectangle(
         frame,
-        (startX, startY - th - 15),
-        (startX + tw + 10, startY),
-        color,
-        cv2.FILLED,
+        (startX, startY - text_height - 15),
+        (startX + text_width + 10, startY),
+        color, cv2.FILLED,
     )
-
-    # White text on top
-    cv2.putText(
-        frame, text,
-        (startX + 5, startY - 5),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-        (255, 255, 255), 2,
-    )
+    cv2.putText(frame, text, (startX + 5, startY - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     return frame
 
 
-def _parse_prediction(pred: np.ndarray) -> tuple[str, float]:
-    """
-    Normalise model output regardless of whether the model outputs
-    a single sigmoid score or a 2-class softmax vector.
-    Returns (label, confidence_0_to_1).
-    """
-    if pred.shape[0] == 1:
-        score = float(pred[0])
-        label = "No Mask" if score > 0.5 else "Mask"
-        conf  = score if score > 0.5 else 1.0 - score
-    else:
-        idx   = int(np.argmax(pred))
-        label = "No Mask" if idx == 1 else "Mask"
-        conf  = float(pred[idx])
-    return label, conf
+def parse_model_output(raw_score):
+    """Convert raw sigmoid score to (label, confidence)."""
+    score = float(raw_score)
+    if score <= 0.5:
+        return "Mask", 1.0 - score
+    return "No Mask", score
 
 
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║                    PREDICTION PIPELINE (SINGLETON)                      ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
+def load_pytorch_model(model_path, device):
+    """Reconstruct the EfficientNetB0 architecture and load saved weights."""
+    model = efficientnet_b0(weights=None)
+    in_features = model.classifier[1].in_features
+    model.classifier = nn.Sequential(
+        nn.Dropout(0.5),
+        nn.Linear(in_features, 128),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(128, 1),
+    )
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
+    model.eval()
+    return model
+
 
 class PredictPipeline:
-    """
-    Thread-safe, singleton-like pipeline.
-
-    Usage
-    -----
-        pipeline = PredictPipeline()        # load once at startup
-
-        # Single image path
-        result = pipeline.predict_image(image_path)
-
-        # Raw BGR numpy frame (from webcam / video)
-        annotated, detections = pipeline.predict_frame(frame)
-
-        # Generator for video files (server-side, headless)
-        for ann_frame, dets in pipeline.predict_video_frames(video_path):
-            ...
-    """
-
-    _instance_lock = threading.Lock()
+    """Thread-safe prediction pipeline using PyTorch EfficientNetB0."""
 
     def __init__(self):
         try:
-            self.model_path = os.path.join(ARTIFACT_DIR, MODEL_DIR, MODEL_NAME)
-            if not os.path.exists(self.model_path):
-                raise FileNotFoundError(f"Model not found at {self.model_path}")
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            logging.info(f"PredictPipeline using device: {self.device}")
 
-            logging.info(f"Loading model from: {self.model_path}")
-            self.model = load_model(self.model_path)
-            # Check model output shape
-            self.output_shape = self.model.output_shape
+            model_path = os.path.join(ARTIFACT_DIR, MODEL_DIR, MODEL_NAME)
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"Model not found at {model_path}")
 
-            # Warm-up: run one dummy prediction to initialise TF graph
-            dummy = np.zeros((1, IMG_SIZE, IMG_SIZE, 3), dtype="float32")
-            self.model.predict(dummy, verbose=0)
+            logging.info(f"Loading model from: {model_path}")
+            self.model = load_pytorch_model(model_path, self.device)
+
+            # Warm-up: run one dummy forward pass to initialize the model graph
+            dummy = torch.zeros((1, 3, IMG_SIZE, IMG_SIZE), dtype=torch.float32, device=self.device)
+            with torch.no_grad():
+                self.model(dummy)
             logging.info("Model warm-up complete")
 
-            # Face detectors
             self.face_cropper = FaceCropper()
+            self.inference_lock = threading.Lock()
 
-            # Haar cascade as backup
-            cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-            self.face_cascade = cv2.CascadeClassifier(cascade_path)
-
-            # Per-instance lock for thread-safe inference
-            self._infer_lock = threading.Lock()
-
-            logging.info("PredictPipeline initialised successfully")
+            logging.info("PredictPipeline initialized successfully")
 
         except Exception as e:
             logging.error(f"PredictPipeline init error: {e}")
             raise CustomException(e, sys)
 
-    # ── Core: preprocess + batch-predict a list of face crops ────────────────
-    def _infer_faces(self, face_crops: list[np.ndarray]) -> np.ndarray:
+    def preprocess_face_crops(self, face_crops):
         """
-        Preprocess a list of BGR face crops and run a single batch prediction.
-        Thread-safe via self._infer_lock.
+        Convert a list of BGR face crops (numpy arrays) into a
+        normalized PyTorch batch tensor ready for the model.
         """
-        preprocessed = []
+        tensors = []
         for face in face_crops:
-            rgb     = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-            resized = cv2.resize(rgb, (IMG_SIZE, IMG_SIZE))
-            arr     = np.asarray(resized, dtype="float32")
-            arr     = preprocess_input(arr)
-            preprocessed.append(arr)
+            # Convert BGR to RGB for torchvision
+            rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+            tensor = preprocess(rgb)
+            tensors.append(tensor)
 
-        batch = np.array(preprocessed, dtype="float32")
-        with self._infer_lock:
-            preds = self.model.predict(batch, verbose=0)
-        return preds
+        # Stack into a batch of shape (N, 3, IMG_SIZE, IMG_SIZE)
+        return torch.stack(tensors).to(self.device)
 
-    # ── Public: predict a single raw BGR frame ───────────────────────────────
-    def predict_frame(
-        self,
-        frame: np.ndarray,
-    ) -> tuple[np.ndarray, list[dict]]:
-        """
-        Run face detection + mask prediction on one BGR frame.
+    def run_inference(self, face_crops):
+        """Run the model on preprocessed face crops. Returns scores as a numpy array."""
+        if not face_crops:
+            return []
 
-        Returns
-        -------
-        annotated_frame : np.ndarray   BGR frame with boxes/labels drawn
-        detections      : list[dict]   [{label, face_num, confidence, coords}]
-        """
+        batch_tensor = self.preprocess_face_crops(face_crops)
+
+        with self.inference_lock:
+            with torch.no_grad():
+                logits = self.model(batch_tensor)
+                scores = torch.sigmoid(logits).cpu().numpy()
+
+        return scores
+
+    def predict_frame(self, frame):
+        """Detect faces in a frame and classify each one as Mask/No Mask."""
         try:
             faces = self.face_cropper.detect_faces(frame)
-            annotated  = frame.copy()
+            annotated_frame = frame.copy()
             detections = []
 
-            if not faces or len(faces) == 0:
-                return annotated, detections
+            if not faces:
+                return annotated_frame, detections
 
-            cropped = self.face_cropper.crop_faces(frame, faces)
-            face_crops = [c["face"] for c in cropped]
-            preds      = self._infer_faces(face_crops)
+            cropped_faces = self.face_cropper.crop_faces(frame, faces)
+            face_images   = [crop["face"] for crop in cropped_faces]
+            scores        = self.run_inference(face_images)
 
-            for idx, pred in enumerate(preds):
-                label, conf = _parse_prediction(pred)
-                coords = cropped[idx]["coords"]          # (startX, startY, endX, endY)
-                _draw_detection(annotated, coords, label, conf)
+            for idx, score in enumerate(scores):
+                label, confidence = parse_model_output(score[0])
+                coords = cropped_faces[idx]["coords"]
+                draw_bounding_box(annotated_frame, coords, label, confidence)
 
                 detections.append({
                     "face_num"  : idx + 1,
                     "label"     : label,
-                    "confidence": f"{conf * 100:.1f}%",
+                    "confidence": f"{confidence * 100:.1f}%",
                     "coords"    : coords,
                 })
 
-            return annotated, detections
+            return annotated_frame, detections
 
         except Exception as e:
             logging.error(f"predict_frame error: {e}")
             raise CustomException(e, sys)
 
-    # ── Public: predict from image path (used by photo-upload route) ──────────
-    def predict_image(self, image_path: str) -> dict:
-        """
-        Load an image from disk, run detection, return result dict.
-
-        Returns
-        -------
-        {
-            'image'      : annotated BGR ndarray,
-            'detections' : [{ label, face_num, confidence, coords }],
-            'num_faces'  : int,
-        }
-        """
+    def predict_image(self, image_path):
+        """Load an image from disk and run face mask detection."""
         try:
             frame = cv2.imread(image_path)
             if frame is None:
                 raise FileNotFoundError(f"Cannot read image: {image_path}")
 
-            annotated, detections = self.predict_frame(frame)
+            annotated_frame, detections = self.predict_frame(frame)
 
             return {
-                "image"     : annotated,
+                "image"     : annotated_frame,
                 "detections": detections,
                 "num_faces" : len(detections),
             }
@@ -221,15 +183,9 @@ class PredictPipeline:
             logging.error(f"predict_image error: {e}")
             raise CustomException(e, sys)
 
-    # ── Public: predict from base64 string (used by webcam-capture route) ─────
-    def predict_base64(self, b64_string: str) -> dict:
-        """
-        Decode a data-URL base64 image string, run detection, return result dict.
-
-        Returns same shape as predict_image().
-        """
+    def predict_base64(self, b64_string):
+        """Decode a base64 image from the browser and run detection."""
         try:
-            # Strip data-URL header if present
             if "," in b64_string:
                 b64_string = b64_string.split(",", 1)[1]
 
@@ -239,10 +195,10 @@ class PredictPipeline:
             if frame is None:
                 raise ValueError("Could not decode base64 image")
 
-            annotated, detections = self.predict_frame(frame)
+            annotated_frame, detections = self.predict_frame(frame)
 
             return {
-                "image"     : annotated,
+                "image"     : annotated_frame,
                 "detections": detections,
                 "num_faces" : len(detections),
             }
@@ -251,33 +207,15 @@ class PredictPipeline:
             logging.error(f"predict_base64 error: {e}")
             raise CustomException(e, sys)
 
-    # ── Public: generator for server-side video processing ───────────────────
-    def predict_video_frames(
-        self,
-        video_path: str,
-        frame_skip: int = 0,
-    ):
-        """
-        Generator that yields (annotated_frame, detections) for each frame.
-
-        Parameters
-        ----------
-        video_path  : str   path to input video file
-        frame_skip  : int   process every (frame_skip + 1)-th frame;
-                            skipped frames are yielded with the last detection
-                            drawn on them (keeps output fps stable).
-
-        Yields
-        ------
-        (annotated_frame: np.ndarray, detections: list[dict])
-        """
+    def predict_video_frames(self, video_path, frame_skip=0):
+        """Generator that yields (annotated_frame, detections) for each video frame."""
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             raise ValueError(f"Cannot open video: {video_path}")
 
-        frame_idx      = 0
-        last_annotated = None
-        last_detections: list[dict] = []
+        frame_idx       = 0
+        last_annotated  = None
+        last_detections = []
 
         try:
             while True:
@@ -286,14 +224,14 @@ class PredictPipeline:
                     break
 
                 if frame_skip > 0 and frame_idx % (frame_skip + 1) != 0:
-                    # Re-use previous detections on this raw frame to maintain fps
-                    yield (frame if last_annotated is None else last_annotated.copy(),
-                           last_detections)
+                    # Reuse the last result to maintain output FPS
+                    out = last_annotated if last_annotated is not None else frame
+                    yield out, last_detections
                 else:
-                    annotated, detections = self.predict_frame(frame)
-                    last_annotated  = annotated
+                    annotated_frame, detections = self.predict_frame(frame)
+                    last_annotated  = annotated_frame
                     last_detections = detections
-                    yield annotated, detections
+                    yield annotated_frame, detections
 
                 frame_idx += 1
 
@@ -301,30 +239,19 @@ class PredictPipeline:
             cap.release()
             logging.info(f"predict_video_frames: {frame_idx} frames processed")
 
-    # ── Public: live webcam generator (for Flask MJPEG stream) ───────────────
-    def generate_live_frames(
-        self,
-        camera_index: int  = 0,
-        frame_skip: int    = 1,
-        jpeg_quality: int  = 80,
-    ):
-        """
-        Generator that yields MJPEG-ready bytes for the Flask Response.
-
-        frame_skip=1  → process every other frame (halves CPU on low-end hw)
-        """
+    def generate_live_frames(self, camera_index=0, frame_skip=1, jpeg_quality=80, flip=True):
+        """Generator for a live MJPEG webcam stream to send to the browser."""
         cap = cv2.VideoCapture(camera_index)
+
         if not cap.isOpened():
-            # Yield a single "no camera" placeholder frame and stop
             placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
-            cv2.putText(
-                placeholder, "No Camera Found",
-                (140, 240), cv2.FONT_HERSHEY_SIMPLEX,
-                1.2, (0, 200, 128), 2,
-            )
+            cv2.putText(placeholder, "No Camera Found", (140, 240), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 200, 128), 2)
             _, buf = cv2.imencode(".jpg", placeholder)
             yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n"
             return
+
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
         frame_idx      = 0
         last_annotated = None
@@ -334,6 +261,9 @@ class PredictPipeline:
                 ret, frame = cap.read()
                 if not ret:
                     break
+
+                if flip:
+                    frame = cv2.flip(frame, 1)
 
                 if frame_skip > 0 and frame_idx % (frame_skip + 1) != 0:
                     out = last_annotated if last_annotated is not None else frame
@@ -343,12 +273,7 @@ class PredictPipeline:
 
                 encode_params = [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality]
                 _, buf = cv2.imencode(".jpg", out, encode_params)
-                yield (
-                    b"--frame\r\n"
-                    b"Content-Type: image/jpeg\r\n\r\n"
-                    + buf.tobytes()
-                    + b"\r\n"
-                )
+                yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n")
                 frame_idx += 1
 
         finally:
