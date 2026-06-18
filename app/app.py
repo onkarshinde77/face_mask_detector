@@ -157,7 +157,7 @@ def video_feed():
     flip_video = (flip_param != "false")
 
     return Response(
-        pipeline.generate_live_frames(
+        pipeline.detect_mask_live_stream(
             camera_index=camera_index,
             frame_skip=1,
             jpeg_quality=75,
@@ -190,7 +190,7 @@ def upload_photo():
                 return jsonify({"success": False, "error": "Cannot decode image."}), 400
 
             # Process the image with our face mask detection pipeline
-            annotated_frame, detections = pipeline.predict_frame_robust(frame)
+            annotated_frame, detections = pipeline.detect_mask_in_image(frame)
             return jsonify({
                 "success": True,
                 "image_b64": convert_frame_to_base64(annotated_frame),
@@ -205,7 +205,7 @@ def upload_photo():
     if json_data and "image" in json_data:
         try:
             flip_horizontal = bool(json_data.get("flip_horizontal", False))
-            result = pipeline.predict_base64(json_data["image"], flip_horizontal=flip_horizontal)
+            result = pipeline.detect_mask_in_base64(json_data["image"], flip_horizontal=flip_horizontal)
             
             return jsonify({
                 "success": True,
@@ -252,7 +252,7 @@ def process_video_in_background(video_id, input_video_path):
         
         frames_processed = 0
         # Iterate over each frame and process it
-        for annotated_frame, detections in pipeline.predict_video_frames(input_video_path, frame_skip=0):
+        for annotated_frame, detections in pipeline.detect_mask_in_video(input_video_path, frame_skip=0):
             video_writer.write(annotated_frame)
             frames_processed += 1
             

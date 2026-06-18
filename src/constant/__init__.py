@@ -8,6 +8,20 @@ VALID_DATA_DIR:str = "valid"
 ARTIFACT_DIR:str = "artifact"
 IMG_DIR:str = "images"
 
+# pipeline step sub-directories inside artifact/
+DATA_VALIDATION_DIR:str = "data_validation"
+DATA_TRANSFORMATION_DIR:str = "data_transformation"
+EVALUATION_DIR:str = "evaluation"
+
+# data validation thresholds
+BLUR_THRESHOLD:float = 100.0      # images below this Laplacian variance are too blurry
+MIN_IMG_WIDTH:int = 32
+MIN_IMG_HEIGHT:int = 32
+VALID_LABELS = {"with_mask", "without_mask"}
+
+# data transformation
+CROPPED_DATA_DIR:str = "cropped_dataset"
+
 # other
 img_extention = (".jpg",".jpeg",".png")
 # model 
@@ -17,7 +31,7 @@ EPOCHS=10
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 MODEL_DIR:str = "models"
-MODEL_NAME:str = "efficientnetb0_model.h5"
+MODEL_NAME:str = "efficientnetb0_model.pth"
 
 # fine-tune model (EfficientNetB4)
 FINE_TUNE_IMG_SIZE = 380
