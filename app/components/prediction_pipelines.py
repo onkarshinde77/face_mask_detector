@@ -13,7 +13,9 @@ from torchvision.models import (
 from components.face_crop import FaceCropper
 
 
-IMG_SIZE   = 380
+from src import constant
+
+IMG_SIZE   = constant.FINE_TUNE_IMG_SIZE
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR  = os.path.join(BASE_DIR, "models")
 # MODEL_NAME = "face_mask_model4_f16.keras"
@@ -168,6 +170,9 @@ class PredictPipeline:
 
     def _infer_faces(self, face_crops: list[np.ndarray]) -> np.ndarray:
         """Preprocess a list of BGR face crops and run a single batch prediction."""
+        if not face_crops:
+            return np.empty((0, 1), dtype=np.float32)
+
         preprocessed = []
         for face in face_crops:
             rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
@@ -349,7 +354,7 @@ class PredictPipeline:
                                         float(det["confidence"].rstrip("%")) / 100)
                     yield out, last_detections
                 else:
-                    annotated, detections = self.predict_frame(frame)
+                    annotated, detections = self.predict_frame_robust(frame)
                     last_annotated  = annotated
                     last_detections = detections
                     yield annotated, detections

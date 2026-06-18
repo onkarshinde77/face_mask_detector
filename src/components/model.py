@@ -40,7 +40,7 @@ class Model:
 
             # Compile
             model.compile(
-                optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+                optimizer=tf.keras.optimizers.Adam(learning_rate=constant.LEARNING_RATE),
                 loss="binary_crossentropy",
                 metrics=["accuracy"]
             )
@@ -57,8 +57,8 @@ class Model:
     @staticmethod
     def create_data_generator(
         image_dir_path: str,
-        img_size: int = 224,
-        batch_size: int = 32,
+        img_size: int = constant.IMG_SIZE,
+        batch_size: int = constant.BATCH_SIZE,
         shuffle: bool = True
     ):
         try:

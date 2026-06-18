@@ -17,7 +17,7 @@ class FaceCropper:
     """
 
     def __init__(self):
-        self.confidence_threshold = 0.5
+        self.confidence_threshold = 0.35
 
         # Ensure model exists
         if not os.path.exists(MODEL_PATH):
