@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-from torchvision.models import efficientnet_b0
+from torchvision.models import efficientnet_b4
 
 from src.exception.exception import CustomException
 from src.logger.logger import logging
@@ -27,7 +27,7 @@ class ModelEvaluation:
 
     def load_model(self):
         """Reconstruct the model architecture and load saved weights."""
-        model = efficientnet_b0(weights=None)
+        model = efficientnet_b4(weights=None)
         in_features = model.classifier[1].in_features
         model.classifier = torch.nn.Sequential(
             torch.nn.Dropout(0.5),

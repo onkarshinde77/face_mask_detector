@@ -1,7 +1,7 @@
 import sys
 import torch
 import torch.nn as nn
-from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
+from torchvision.models import efficientnet_b4, EfficientNet_B4_Weights
 
 from src.exception.exception import CustomException
 from src.logger.logger import logging
@@ -15,12 +15,12 @@ class ModelBuilder:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def build(self) -> ModelBuilderArtifact:
-        """Build EfficientNetB0 with a custom binary classification head."""
+        """Build EfficientNetB4 with a custom binary classification head."""
         try:
             logging.info(f"Starting Model Builder (device: {self.device})")
 
-            # Load pretrained EfficientNetB0
-            model = efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
+            # Load pretrained EfficientNetB4
+            model = efficientnet_b4(weights=EfficientNet_B4_Weights.IMAGENET1K_V1)
 
             # Freeze all backbone layers
             for param in model.features.parameters():

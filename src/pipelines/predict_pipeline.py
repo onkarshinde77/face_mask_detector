@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torchvision import transforms
-from torchvision.models import efficientnet_b0
+from torchvision.models import efficientnet_b4
 
 from src.constant import ARTIFACT_DIR, MODEL_DIR, IMG_SIZE, MODEL_NAME
 from src.exception.exception import CustomException
@@ -57,8 +57,8 @@ def parse_model_output(raw_score):
 
 
 def load_pytorch_model(model_path, device):
-    """Reconstruct the EfficientNetB0 architecture and load saved weights."""
-    model = efficientnet_b0(weights=None)
+    """Reconstruct the EfficientNetB4 architecture and load saved weights."""
+    model = efficientnet_b4(weights=None)
     in_features = model.classifier[1].in_features
     model.classifier = nn.Sequential(
         nn.Dropout(0.5),
@@ -74,7 +74,7 @@ def load_pytorch_model(model_path, device):
 
 
 class PredictPipeline:
-    """Thread-safe prediction pipeline using PyTorch EfficientNetB0."""
+    """Thread-safe prediction pipeline using PyTorch EfficientNetB4."""
 
     def __init__(self):
         try:
