@@ -21,6 +21,7 @@ class DataIngestion:
 
     def init_data_ingestion(self) -> DataIngestionArtifact:
         try:
+            # if pipeline already executed then skip this step and return artifact
             if (os.path.exists(self.artifact_train_dir) and 
                 os.path.exists(self.artifact_test_dir) and 
                 os.path.exists(self.artifact_valid_dir)):
@@ -56,3 +57,8 @@ class DataIngestion:
 
         except Exception as e:
             raise CustomException(e, sys)
+
+
+# obj = DataIngestion(config=DataIngestionConfig())
+# artifact = obj.init_data_ingestion()
+# print(artifact)
