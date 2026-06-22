@@ -8,7 +8,10 @@ from src import constant
 from src.entity.config_entity import DataTransformationConfig
 from src.entity.artifact_entity import DataValidationArtifact, DataTransformationArtifact
 from src.components.face_crop import FaceCropper
-
+# remove this code
+from src.components.data_validation import DataValidation
+from src.components.data_ingestion import DataIngestion
+from src.entity.config_entity import DataIngestionConfig, DataValidationConfig
 
 class DataTransformation:
     def __init__(self, config: DataTransformationConfig, artifact: DataValidationArtifact):
@@ -17,12 +20,9 @@ class DataTransformation:
         self.face_cropper = FaceCropper()
 
     def crop_and_save_folder(self, source_dir, split_name):
-        """
-        For each image in source_dir, detect and crop the face, then save
-        the cropped image to the output directory under the same label folder.
-        Images where no face is detected are dropped.
-        Returns the output directory path.
-        """
+
+        # output_split_dir = artifact/data_transformation/cropped_data/train
+        # split name = train,test,valid
         output_split_dir = os.path.join(self.config.output_dir, split_name)
         total = saved = dropped = 0
 
@@ -80,9 +80,11 @@ class DataTransformation:
 
             logging.info("Starting Data Transformation (face cropping)")
             os.makedirs(self.config.output_dir, exist_ok=True)
-
+            # artifact\data_validation\validated_data\train
             train_out = self.crop_and_save_folder(self.artifact.train_dir_path, constant.TRAIN_DATA_DIR)
+            # artifact\data_validation\validated_data\test
             test_out  = self.crop_and_save_folder(self.artifact.test_dir_path,  constant.TEST_DATA_DIR)
+            # artifact\data_validation\validated_data\valid
             valid_out = self.crop_and_save_folder(self.artifact.valid_dir_path, constant.VALID_DATA_DIR)
 
             logging.info("Data Transformation Complete")
@@ -94,3 +96,22 @@ class DataTransformation:
 
         except Exception as e:
             raise CustomException(e, sys)
+
+
+# remove this code
+data_ingestion_config = DataIngestionConfig()
+data_ingestion = DataIngestion(config=data_ingestion_config)
+data_ingestion_artifact = data_ingestion.init_data_ingestion()
+print("data_ingestion_artifact",data_ingestion_artifact)
+
+data_validation_config = DataValidationConfig()
+data_validation = DataValidation(config=data_validation_config, artifact=data_ingestion_artifact)
+data_validation_artifact = data_validation.init_data_validation()
+print("data_validation_artifact",data_validation_artifact)
+
+data_transformation_config = DataTransformationConfig()
+print("data_transformation_config",data_transformation_config)
+
+data_transformation = DataTransformation(config=data_transformation_config, artifact=data_validation_artifact)
+data_transformation_artifact = data_transformation.init_data_transformation()
+print("data_transformation_artifact",data_transformation_artifact)

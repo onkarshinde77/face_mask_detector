@@ -153,9 +153,9 @@ class DataValidation:
         except Exception as e:
             raise CustomException(e, sys)
 
-obj = DataIngestion(config=DataIngestionConfig())
-artifact = obj.init_data_ingestion()
+# obj = DataIngestion(config=DataIngestionConfig())
+# artifact = obj.init_data_ingestion()
 
-obj2 = DataValidation(config=DataValidationConfig(), artifact=artifact)
-artifact2 = obj2.init_data_validation()
-print(artifact2)
+# obj2 = DataValidation(config=DataValidationConfig(), artifact=artifact)
+# artifact2 = obj2.init_data_validation()
+# print(artifact2)

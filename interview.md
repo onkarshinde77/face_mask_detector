@@ -7,7 +7,10 @@ Ans:
 3. how many time i train and model improve step by step
 Ans: 
 
+4. How cv2.imwrite() function work
+Ans: 
 
+5. 
 
 
 
