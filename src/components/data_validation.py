@@ -2,13 +2,16 @@ import os
 import sys
 import shutil
 import cv2
+import numpy as np
+from typing import Tuple
 
 from src.exception.exception import CustomException
 from src.logger.logger import logging
 from src import constant
-from src.entity.config_entity import DataValidationConfig
-from src.entity.artifact_entity import DataIngestionArtifact, DataValidationArtifact
+from src.entity.config_entity import DataValidationConfig , DataIngestionConfig
+from src.entity.artifact_entity import DataIngestionArtifact, DataValidationArtifact 
 
+from src.components.data_ingestion import DataIngestion
 
 class DataValidation:
     def __init__(self, config: DataValidationConfig, artifact: DataIngestionArtifact):
@@ -16,25 +19,24 @@ class DataValidation:
         self.artifact = artifact
 
     # ---- individual image checks ----
-
-    def is_image_readable(self, image_path):
-        """Try to read the image file with OpenCV."""
+    def is_image_readable(self, image_path)-> Tuple[bool,np.ndarray]:
         img = cv2.imread(image_path)
         return img is not None, img
 
-    def is_dimension_valid(self, img):
-        """Check if the image has at least the minimum required dimensions."""
+    def is_dimension_valid(self, img)-> bool:
+        # Check if the image has at least the minimum required dimensions
         h, w = img.shape[:2]
         return h >= self.config.min_height and w >= self.config.min_width
 
-    def is_blurry(self, img):
-        """Return True if the image is too blurry (Laplacian variance below threshold)."""
+    def is_blurry(self, img)-> Tuple[bool,float]:
+        # Return True if the image is too blurry (Laplacian variance below threshold)
+        # Because blur detection only needs brightness information, not color 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         variance = cv2.Laplacian(gray, cv2.CV_64F).var()
         return variance < self.config.blur_threshold, variance
 
-    def is_label_valid(self, image_path):
-        """Check that the parent folder name is a recognized class label."""
+    def is_label_valid(self, image_path)-> Tuple[bool,str]:
+        # Check that the parent folder name is a recognized class label 
         label = os.path.basename(os.path.dirname(image_path))
         return label in self.config.valid_labels, label
 
@@ -150,3 +152,10 @@ class DataValidation:
 
         except Exception as e:
             raise CustomException(e, sys)
+
+obj = DataIngestion(config=DataIngestionConfig())
+artifact = obj.init_data_ingestion()
+
+obj2 = DataValidation(config=DataValidationConfig(), artifact=artifact)
+artifact2 = obj2.init_data_validation()
+print(artifact2)

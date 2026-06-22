@@ -11,14 +11,13 @@ class FaceCropper:
     """
     Face detection and cropping using YOLOv8 Face model
     """
-
     def __init__(self):
         try:
             # Project root
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             face_detector_dir = os.path.join(project_root, "face_detector")
 
-            model_path = os.path.join(face_detector_dir, "yolov8n-face.pt")
+            model_path = os.path.join(face_detector_dir, "model.pt")
 
             logging.info(f"Looking for YOLO model in: {model_path}")
 
@@ -27,9 +26,7 @@ class FaceCropper:
 
             # Load YOLO model
             self.model = YOLO(model_path)
-
             self.confidence_threshold = 0.5
-
             logging.info("YOLOv8 FaceCropper initialized successfully")
 
         except Exception as e:
@@ -42,23 +39,18 @@ class FaceCropper:
         """
         try:
             h, w = image.shape[:2]
-
             results = self.model(image, verbose=False)
-
             faces = []
 
             for r in results:
                 boxes = r.boxes
-
                 if boxes is None:
                     continue
-
                 for box in boxes:
                     conf = float(box.conf[0])
 
                     if conf > self.confidence_threshold:
                         x1, y1, x2, y2 = map(int, box.xyxy[0])
-
                         # Clamp values
                         x1 = max(0, x1)
                         y1 = max(0, y1)
@@ -66,7 +58,6 @@ class FaceCropper:
                         y2 = min(h, y2)
 
                         faces.append((x1, y1, x2, y2, conf))
-
             logging.info(f"Detected {len(faces)} face(s)")
             return faces
 
