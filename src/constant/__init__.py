@@ -25,13 +25,13 @@ CROPPED_DATA_DIR:str = "cropped_dataset"
 # other
 img_extention = (".jpg",".jpeg",".png")
 # model 
-IMG_SIZE = 224
+IMG_SIZE = 380
 NUM_CLASSES = 2
 EPOCHS=10
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 MODEL_DIR:str = "models"
-MODEL_NAME:str = "efficientnetb4_model2.pth"
+MODEL_NAME:str = "efficientnetb4_model.pth"
 
 # fine-tune model (EfficientNetB4)
 FINE_TUNE_IMG_SIZE = 380

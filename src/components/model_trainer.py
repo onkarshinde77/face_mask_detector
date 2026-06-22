@@ -12,7 +12,7 @@ from src.exception.exception import CustomException
 from src.logger.logger import logging
 from src import constant
 from src.entity.config_entity import ModelTrainerConfig
-from src.entity.artifact_entity import ModelBuilderArtifact, DataTransformationArtifact, ModelTrainerArtifact
+from src.entity.artifact_entity import ModelBuilderArtifact, DataTransformationArtifact, ModelTrainerArtifact , DataValidationArtifact
 
 
 class ModelTrainer:
@@ -20,13 +20,16 @@ class ModelTrainer:
         self,
         config: ModelTrainerConfig,
         builder_artifact: ModelBuilderArtifact,
-        transformation_artifact: DataTransformationArtifact,
+        # transformation_artifact: DataTransformationArtifact,
+        data_validation_artifact: DataValidationArtifact,
     ):
         self.config = config
         self.model  = builder_artifact.model_object
         self.device = next(self.model.parameters()).device   # reuse device from model
-        self.train_dir = transformation_artifact.train_dir_path
-        self.valid_dir = transformation_artifact.valid_dir_path
+        # self.train_dir = transformation_artifact.train_dir_path
+        # self.valid_dir = transformation_artifact.valid_dir_path
+        self.train_dir = data_validation_artifact.train_dir_path
+        self.valid_dir = data_validation_artifact.valid_dir_path
         os.makedirs(self.config.model_save_dir, exist_ok=True)
 
     def make_data_loaders(self):
@@ -34,12 +37,21 @@ class ModelTrainer:
         # EfficientNet expects [0,1] normalized with ImageNet stats
         train_transform = transforms.Compose([
             transforms.Resize((constant.IMG_SIZE, constant.IMG_SIZE)),
-            transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomRotation(15),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2),
+            transforms.RandomAffine(
+                degrees=0,
+                translate=(0.1, 0.1)
+            ),
+            transforms.ColorJitter(
+                brightness=0.2,
+                contrast=0.2
+            ),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            ),
         ])
 
         valid_transform = transforms.Compose([
