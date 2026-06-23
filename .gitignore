@@ -3,13 +3,12 @@ data/
 uploads/
 app/uploads/
 face_detector/face_detector/
-app/static/uploads/
 *.zip
 data2/
 # logs/
 face_mask_dataset/
 artifact/
-app/static/
+app/models/
 old_artifact/
 
 .venv2/

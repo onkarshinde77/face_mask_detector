@@ -1,0 +1,27 @@
+[2026-06-23 10:30:44,934] 33 root - INFO - ============================================================
+[2026-06-23 10:30:44,935] 34 root - INFO - STEP 1 — Data Ingestion
+[2026-06-23 10:30:44,937] 29 root - INFO - Data already ingested. Skipping ingestion step.
+[2026-06-23 10:30:44,937] 37 root - INFO - Data Ingestion Done: DataIngestionArtifact(train_dir_path='artifact/face_mask_dataset/train', test_dir_path='artifact/face_mask_dataset/test', valid_dir_path='artifact/face_mask_dataset/valid')
+[2026-06-23 10:30:44,938] 40 root - INFO - ============================================================
+[2026-06-23 10:30:44,938] 41 root - INFO - STEP 2 — Data Validation
+[2026-06-23 10:30:44,939] 112 root - INFO - Data validation report already exists. Skipping validation step.
+[2026-06-23 10:30:44,939] 44 root - INFO - Data Validation Done. Report: artifact/data_validation/validation_report.txt
+[2026-06-23 10:30:44,940] 60 root - INFO - ============================================================
+[2026-06-23 10:30:44,940] 61 root - INFO - STEP 4 — Model Builder
+[2026-06-23 10:30:44,979] 20 root - INFO - Starting Model Builder (device: cuda)
+[2026-06-23 10:30:45,446] 41 root - INFO - Model Build Complete
+[2026-06-23 10:30:45,447] 42 root - INFO - Total trainable parameters: 229,633
+[2026-06-23 10:30:45,447] 64 root - INFO - Model Build Done
+[2026-06-23 10:30:45,448] 67 root - INFO - ============================================================
+[2026-06-23 10:30:45,448] 68 root - INFO - STEP 5 — Model Trainer
+[2026-06-23 10:30:45,450] 133 root - INFO - Model already exists at artifact/models/efficientnetb4_model.pth. Skipping training step.
+[2026-06-23 10:30:45,450] 76 root - INFO - Model Training Done. Saved at: artifact/models/efficientnetb4_model.pth
+[2026-06-23 10:30:45,451] 79 root - INFO - ============================================================
+[2026-06-23 10:30:45,451] 80 root - INFO - STEP 6 — Model Evaluation
+[2026-06-23 10:30:45,451] 77 root - INFO - Starting Model Evaluation on device: cuda
+[2026-06-23 10:30:56,833] 102 root - INFO - Test Loss:     0.0132
+[2026-06-23 10:30:56,834] 103 root - INFO - Test Accuracy: 0.9964
+[2026-06-23 10:30:56,836] 114 root - INFO - Evaluation report saved at: artifact/evaluation/evaluation_report.txt
+[2026-06-23 10:30:56,837] 88 root - INFO - Model Evaluation Done — Test Accuracy: 0.9964, Test Loss: 0.0132
+[2026-06-23 10:30:56,837] 94 root - INFO - ============================================================
+[2026-06-23 10:30:56,837] 95 root - INFO - Pipeline Complete!

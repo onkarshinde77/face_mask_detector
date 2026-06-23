@@ -8,10 +8,11 @@ from typing import Tuple
 from src.exception.exception import CustomException
 from src.logger.logger import logging
 from src import constant
-from src.entity.config_entity import DataValidationConfig , DataIngestionConfig
+from src.entity.config_entity import DataValidationConfig
 from src.entity.artifact_entity import DataIngestionArtifact, DataValidationArtifact 
 
-from src.components.data_ingestion import DataIngestion
+# from src.components.data_ingestion import DataIngestion
+# from src.entity.config_entity import DataIngestionConfig
 
 class DataValidation:
     def __init__(self, config: DataValidationConfig, artifact: DataIngestionArtifact):

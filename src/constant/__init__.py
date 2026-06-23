@@ -50,3 +50,4 @@ APP_THREADED = True
 MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500 MB
 ALLOWED_IMAGE_TYPES = {"png", "jpg", "jpeg", "gif", "webp", "bmp"}
 ALLOWED_VIDEO_TYPES = {"mp4", "avi", "mov", "mkv", "webm"}
+

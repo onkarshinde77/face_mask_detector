@@ -119,3 +119,15 @@ num_workers specifies the number of CPU processes used to load data in parallel.
 # Q. What is pin_memory=True?
 ## Answer
 pin_memory=True allocates page-locked memory, enabling faster transfer of data from CPU memory to GPU memory during training.
+
+
+| Feature            | Res10 SSD | YOLOv8 Face          |
+| ------------------ | --------- | -------------------- |
+| Setup              | Very Easy | Easy                 |
+| OpenCV Integration | Excellent | Requires Ultralytics |
+| Speed (CPU)        | Very Good | Good                 |
+| Accuracy           | Good      | Better               |
+| Small Faces        | Weak      | Better               |
+| Side Faces         | Average   | Better               |
+| Real-Time          | Yes       | Yes                  |
+| Multiple Faces     | Yes       | Yes                  |

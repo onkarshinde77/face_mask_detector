@@ -10,7 +10,7 @@ from src.exception.exception import CustomException
 from src.logger.logger import logging
 from src import constant
 from src.entity.config_entity import ModelEvaluationConfig
-from src.entity.artifact_entity import ModelTrainerArtifact, DataTransformationArtifact, ModelEvaluationArtifact
+from src.entity.artifact_entity import ModelTrainerArtifact, DataTransformationArtifact, ModelEvaluationArtifact , DataValidationArtifact
 
 
 class ModelEvaluation:
@@ -18,15 +18,17 @@ class ModelEvaluation:
         self,
         config: ModelEvaluationConfig,
         trainer_artifact: ModelTrainerArtifact,
-        transformation_artifact: DataTransformationArtifact,
+        # transformation_artifact: DataTransformationArtifact,
+        data_validation_artifact: DataValidationArtifact,
     ):
         self.config = config
         self.model_path = trainer_artifact.model_path
-        self.test_dir   = transformation_artifact.test_dir_path
+        # self.test_dir   = transformation_artifact.test_dir_path
+        self.test_dir   = data_validation_artifact.test_dir_path
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def load_model(self):
-        """Reconstruct the model architecture and load saved weights."""
+        """Reconstruct the model architecture and load saved weights for the testing/inference"""
         model = efficientnet_b4(weights=None)
         in_features = model.classifier[1].in_features
         model.classifier = torch.nn.Sequential(

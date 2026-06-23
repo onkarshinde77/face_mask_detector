@@ -12,7 +12,7 @@ from src.entity.config_entity import (
 )
 from src.components.data_ingestion import DataIngestion
 from src.components.data_validation import DataValidation
-from src.components.data_transformation import DataTransformation
+# from src.components.data_transformation import DataTransformation
 from src.components.model_builder import ModelBuilder
 from src.components.model_trainer import ModelTrainer
 from src.components.model_evaluation import ModelEvaluation
@@ -47,14 +47,14 @@ class TrainPipeline:
                 raise Exception("Data Validation Failed. Check the validation report.")
 
             # ── Step 3: Data Transformation ────────────────────────────────────
-            logging.info("=" * 60)
-            logging.info("STEP 3 — Data Transformation (Face Cropping)")
-            data_transformation = DataTransformation(
-                config=self.transformation_config,
-                artifact=validation_artifact,
-            )
-            transformation_artifact = data_transformation.init_data_transformation()
-            logging.info(f"Data Transformation Done: {transformation_artifact}")
+            # logging.info("=" * 60)
+            # logging.info("STEP 3 — Data Transformation (Face Cropping)")
+            # data_transformation = DataTransformation(
+            #     config=self.transformation_config,
+            #     artifact=validation_artifact,
+            # )
+            # transformation_artifact = data_transformation.init_data_transformation()
+            # logging.info(f"Data Transformation Done: {transformation_artifact}")
 
             # ── Step 4: Model Builder ──────────────────────────────────────────
             logging.info("=" * 60)
@@ -69,7 +69,8 @@ class TrainPipeline:
             model_trainer = ModelTrainer(
                 config=self.trainer_config,
                 builder_artifact=builder_artifact,
-                transformation_artifact=transformation_artifact,
+                # transformation_artifact=transformation_artifact,
+                data_validation_artifact=validation_artifact,
             )
             trainer_artifact = model_trainer.initialize_training()
             logging.info(f"Model Training Done. Saved at: {trainer_artifact.model_path}")
@@ -80,7 +81,8 @@ class TrainPipeline:
             model_evaluation = ModelEvaluation(
                 config=self.evaluation_config,
                 trainer_artifact=trainer_artifact,
-                transformation_artifact=transformation_artifact,
+                # transformation_artifact=transformation_artifact,
+                data_validation_artifact=validation_artifact,
             )
             evaluation_artifact = model_evaluation.init_model_evaluation()
             logging.info(

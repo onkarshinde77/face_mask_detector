@@ -79,20 +79,23 @@ class ModelTrainer:
 
     def train_one_epoch(self, loader, criterion, optimizer):
         """Run one training epoch and return (loss, accuracy)."""
-        self.model.train()
+        self.model.train() # without this line model will not used dropout & batchnorm in training time, because the model work different in taining & inference time
         total_loss = 0.0
         correct = 0
         total = 0
 
         for images, labels in loader:
-            images = images.to(self.device)
+            images = images.to(self.device) # load the data into GPU
+            """
+            BCEWithLogitsLoss expect the float labels hence we convert into float and unsqueeze it to add the channel dimension because the output of the model is (batch_size, 1)
+            """ 
             labels = labels.float().unsqueeze(1).to(self.device)
 
-            optimizer.zero_grad()
-            outputs = self.model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+            optimizer.zero_grad() # clear the gradients from previous iteration
+            outputs = self.model(images) # forward pass
+            loss = criterion(outputs, labels) # calculate loss
+            loss.backward() # backward pass
+            optimizer.step() # update weights
 
             total_loss += loss.item()
             preds = (torch.sigmoid(outputs) > 0.5)
@@ -103,12 +106,12 @@ class ModelTrainer:
 
     def validate_one_epoch(self, loader, criterion):
         """Run one validation pass and return (loss, accuracy)."""
-        self.model.eval()
+        self.model.eval()   # switch model into the inference mode to used all the dropout & batchnorm in validation time
         total_loss = 0.0
         correct = 0
         total = 0
 
-        with torch.no_grad():
+        with torch.no_grad(): # without this line gradients will be calculated in validation time which is not needed
             for images, labels in loader:
                 images = images.to(self.device)
                 labels = labels.float().unsqueeze(1).to(self.device)

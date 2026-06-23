@@ -8,10 +8,11 @@ from src import constant
 from src.entity.config_entity import DataTransformationConfig
 from src.entity.artifact_entity import DataValidationArtifact, DataTransformationArtifact
 from src.components.face_crop import FaceCropper
+
 # remove this code
-from src.components.data_validation import DataValidation
-from src.components.data_ingestion import DataIngestion
-from src.entity.config_entity import DataIngestionConfig, DataValidationConfig
+# from src.components.data_validation import DataValidation
+# from src.components.data_ingestion import DataIngestion
+# from src.entity.config_entity import DataIngestionConfig, DataValidationConfig
 
 class DataTransformation:
     def __init__(self, config: DataTransformationConfig, artifact: DataValidationArtifact):
@@ -99,19 +100,19 @@ class DataTransformation:
 
 
 # remove this code
-data_ingestion_config = DataIngestionConfig()
-data_ingestion = DataIngestion(config=data_ingestion_config)
-data_ingestion_artifact = data_ingestion.init_data_ingestion()
-print("data_ingestion_artifact",data_ingestion_artifact)
+# data_ingestion_config = DataIngestionConfig()
+# data_ingestion = DataIngestion(config=data_ingestion_config)
+# data_ingestion_artifact = data_ingestion.init_data_ingestion()
+# print("data_ingestion_artifact",data_ingestion_artifact)
 
-data_validation_config = DataValidationConfig()
-data_validation = DataValidation(config=data_validation_config, artifact=data_ingestion_artifact)
-data_validation_artifact = data_validation.init_data_validation()
-print("data_validation_artifact",data_validation_artifact)
+# data_validation_config = DataValidationConfig()
+# data_validation = DataValidation(config=data_validation_config, artifact=data_ingestion_artifact)
+# data_validation_artifact = data_validation.init_data_validation()
+# print("data_validation_artifact",data_validation_artifact)
 
-data_transformation_config = DataTransformationConfig()
-print("data_transformation_config",data_transformation_config)
+# data_transformation_config = DataTransformationConfig()
+# print("data_transformation_config",data_transformation_config)
 
-data_transformation = DataTransformation(config=data_transformation_config, artifact=data_validation_artifact)
-data_transformation_artifact = data_transformation.init_data_transformation()
-print("data_transformation_artifact",data_transformation_artifact)
+# data_transformation = DataTransformation(config=data_transformation_config, artifact=data_validation_artifact)
+# data_transformation_artifact = data_transformation.init_data_transformation()
+# print("data_transformation_artifact",data_transformation_artifact)

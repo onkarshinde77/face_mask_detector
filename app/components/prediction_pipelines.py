@@ -6,17 +6,14 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-from torchvision.models import (
-    efficientnet_b4,
-    EfficientNet_B4_Weights
-)
+from torchvision.models import efficientnet_b4
 from components.face_crop import FaceCropper
 from src import constant
 
 IMG_SIZE   = constant.FINE_TUNE_IMG_SIZE
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_DIR  = os.path.join(BASE_DIR, "models")
-MODEL_NAME = "EfficientNetB4.pth"
+MODEL_DIR  = os.path.join(BASE_DIR, "models","face_mask_detector")
+MODEL_NAME = "efficientnetb4_model.pth"
 
 # --- Helper Functions ---
 
@@ -86,7 +83,6 @@ class PredictPipeline:
             raise FileNotFoundError(f"Model not found at {model_path}")
 
         self.model = load_face_mask_model(model_path, self.device)
-
         # Run a dummy prediction to initialize PyTorch
         dummy_input = torch.zeros((1, 3, IMG_SIZE, IMG_SIZE), dtype=torch.float32, device=self.device)
         with torch.no_grad():
@@ -109,7 +105,6 @@ class PredictPipeline:
             preprocessed.append(chw)
 
         batch_tensor = torch.from_numpy(np.stack(preprocessed)).to(self.device)
-
         with self.inference_lock:
             with torch.no_grad():
                 logits = self.model(batch_tensor)
