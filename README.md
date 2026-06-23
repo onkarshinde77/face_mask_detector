@@ -500,69 +500,6 @@ Flake8
 Black Formatter
 ```
 
-Install from Extensions marketplace or run:
-```bash
-code --install-extension ms-python.python
-code --install-extension ms-python.vscode-pylance
-code --install-extension ms-python.debugpy
-```
-
-### 6. Create Launch Configuration
-
-Create `.vscode/launch.json`:
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Python: Flask",
-      "type": "python",
-      "request": "launch",
-      "module": "flask",
-      "env": {
-        "FLASK_APP": "app/app.py",
-        "FLASK_ENV": "development"
-      },
-      "args": ["run", "--host=0.0.0.0", "--port=5000"],
-      "jinja": true
-    },
-    {
-      "name": "Python: Current File",
-      "type": "python",
-      "request": "launch",
-      "program": "${file}",
-      "console": "integratedTerminal"
-    }
-  ]
-}
-```
-
-### 7. Setup Debugging
-
-- Set breakpoints (click on line number)
-- Press F5 to start debugging
-- Use Debug Console for variables inspection
-
-### 8. VS Code Settings
-
-Create `.vscode/settings.json`:
-
-```json
-{
-  "python.linting.enabled": true,
-  "python.linting.pylintEnabled": true,
-  "python.formatting.provider": "black",
-  "[python]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "ms-python.python"
-  },
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/src"
-  ]
-}
-```
-
 ---
 
 ## 🚀 Usage
@@ -579,28 +516,6 @@ python run_app.py
 
 # 3. Open browser
 # Visit: http://localhost:5000
-```
-
-### Python API Usage
-
-```python
-from src.pipelines.predict_pipeline import PredictPipeline
-import cv2
-
-# Initialize pipeline
-pipeline = PredictPipeline()
-
-# Detect masks in image
-result = pipeline.predict_image('path/to/image.jpg')
-
-# Access results
-print(f"Faces detected: {result['num_faces']}")
-for detection in result['detections']:
-    print(f"  {detection['label']}: {detection['confidence']*100:.1f}%")
-
-# Display result
-cv2.imshow("Result", result['image'])
-cv2.waitKey(0)
 ```
 
 ### Command Line Examples
@@ -663,46 +578,6 @@ http://localhost:5000/upload_photo  # Photo upload
 http://localhost:5000/upload_video  # Video upload
 http://localhost:5000/live          # Live camera
 ```
-
----
-
-## 📚 API Reference
-
-### PredictPipeline Class
-
-```python
-class PredictPipeline:
-    def predict_image(image_path: str) -> dict
-    def predict_video(video_path: str, save_output: bool, output_path: str) -> dict
-    def predict_webcam() -> dict
-```
-
-### FaceCropper Class
-
-```python
-class FaceCropper:
-    def detect_faces(image: np.ndarray) -> list
-    def crop_faces(image: np.ndarray, faces: list) -> list
-```
-
-### Return Formats
-
-**predict_image() output:**
-```python
-{
-    'image': np.ndarray,              # Annotated image
-    'detections': [                   # List of detections
-        {
-            'coords': (x1, y1, x2, y2),
-            'label': 'Mask' | 'No Mask',
-            'confidence': float
-        }
-    ],
-    'num_faces': int
-}
-```
-
----
 
 ## 🏗️ Technical Architecture
 
