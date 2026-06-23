@@ -1,0 +1,336 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+    --bg: #080c12;
+    --surface: #0e1420;
+    --accent: #00f0c0;
+    --accent2: #0080ff;
+    --text: #e8edf5;
+    --muted: #6b7a94;
+    --glow: 0 0 30px rgba(0, 240, 192, 0.25);
+    --red: #ff4560;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+}
+
+/* Grid background */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(0, 240, 192, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 192, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Ambient glow blob */
+body::after {
+    content: '';
+    position: fixed;
+    top: -30%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0, 128, 255, 0.1) 0%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
+    animation: driftBlob 14s ease-in-out infinite alternate;
+}
+
+@keyframes driftBlob {
+    to {
+        transform: translate(-10%, 15%);
+    }
+}
+
+/* ── Main Layout ─────────────────────────────────── */
+.live-camera {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 52px 32px 44px;
+    animation: fadeDown 0.7s ease both;
+}
+
+@keyframes fadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── Heading ─────────────────────────────────────── */
+.live-camera h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    letter-spacing: 0.06em;
+    background: linear-gradient(135deg, #ffffff 40%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 36px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ── Video Feed Frame ────────────────────────────── */
+.video-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 36px;
+}
+
+/* Corner brackets */
+.video-wrapper::before,
+.video-wrapper::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.video-wrapper::before {
+    top: -3px;
+    left: -3px;
+    border-top: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+    box-shadow: -2px -2px 12px rgba(0, 240, 192, 0.4);
+}
+
+.video-wrapper::after {
+    bottom: -3px;
+    right: -3px;
+    border-bottom: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    box-shadow: 2px 2px 12px rgba(0, 240, 192, 0.4);
+}
+
+/* Extra corner brackets via inner pseudo */
+.corner-tl,
+.corner-tr,
+.corner-bl,
+.corner-br {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.corner-tr {
+    top: -3px;
+    right: -3px;
+    border-top: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    box-shadow: 2px -2px 12px rgba(0, 240, 192, 0.4);
+}
+
+.corner-bl {
+    bottom: -3px;
+    left: -3px;
+    border-bottom: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+    box-shadow: -2px 2px 12px rgba(0, 240, 192, 0.4);
+}
+
+.video-frame {
+    display: block;
+    width: 640px;
+    max-width: 90vw;
+    height: auto;
+    border-radius: 4px;
+    background: var(--surface);
+    box-shadow:
+        0 0 0 1px rgba(0, 240, 192, 0.12),
+        0 24px 60px rgba(0, 0, 0, 0.6),
+        inset 0 0 60px rgba(0, 0, 0, 0.4);
+    position: relative;
+    z-index: 1;
+}
+
+/* Scanning line animation */
+.scan-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--accent) 40%, rgba(0, 240, 192, 0.6) 60%, transparent 100%);
+    z-index: 3;
+    animation: scanDown 3s linear infinite;
+    box-shadow: 0 0 12px var(--accent);
+    pointer-events: none;
+}
+
+@keyframes scanDown {
+    0% {
+        top: 0%;
+        opacity: 1;
+    }
+
+    95% {
+        opacity: 1;
+    }
+
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+/* Live badge */
+.live-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(8, 12, 18, 0.75);
+    border: 1px solid rgba(255, 69, 96, 0.4);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--red);
+    backdrop-filter: blur(8px);
+}
+
+.live-badge .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--red);
+    box-shadow: 0 0 8px var(--red);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.4;
+        transform: scale(0.7);
+    }
+}
+
+/* ── Status Bar ──────────────────────────────────── */
+.status-bar {
+    width: 640px;
+    max-width: 90vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    background: var(--surface);
+    border: 1px solid rgba(0, 240, 192, 0.08);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    margin-bottom: 36px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+}
+
+.status-bar span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-bar .ok {
+    color: var(--accent);
+}
+
+/* ── Back Link ───────────────────────────────────── */
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--muted);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: color 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.back-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0, 240, 192, 0.06) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+
+.back-link:hover {
+    color: var(--accent);
+    border-color: rgba(0, 240, 192, 0.35);
+    box-shadow: var(--glow);
+    transform: translateY(-2px);
+}
+
+.back-link:hover::before {
+    opacity: 1;
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 680px) {
+    .live-camera {
+        padding: 32px 16px 32px;
+    }
+
+    .video-frame {
+        width: 100%;
+    }
+
+    .status-bar {
+        width: 100%;
+    }
+}

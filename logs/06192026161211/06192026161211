@@ -1,0 +1,5 @@
+[2026-06-19 16:12:11,687] 36 root - INFO - Started Data Ingestion
+[2026-06-19 16:12:11,687] 42 root - INFO - Copying train data from face_mask_dataset\train to artifact\face_mask_dataset\train
+[2026-06-19 16:12:18,979] 45 root - INFO - Copying test data from face_mask_dataset\test to artifact\face_mask_dataset\test
+[2026-06-19 16:12:19,601] 48 root - INFO - Copying valid data from face_mask_dataset\valid to artifact\face_mask_dataset\valid
+[2026-06-19 16:12:20,207] 51 root - INFO - Data Ingestion Completed
